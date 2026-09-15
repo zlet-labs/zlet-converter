@@ -45,8 +45,15 @@ public sealed class TxtMarkdownConversionAdapter : IConversionAdapter
             operation.Target,
             async (temporaryOutput, token) =>
             {
-                var text = await ReadTextAsync(operation.SourcePath, token);
-                var normalized = text.Replace("\r\n", "\n").Replace('\r', '\n');
+                var (success, text) = await TryReadTextAsync(operation.SourcePath, token);
+                if (!success)
+                {
+                    return new TemporaryOutputProductionResult(
+                        false,
+                        ErrorCode: "text_encoding_unsupported",
+                        UserMessage: "Кодировка текстового файла не поддерживается.");
+                }
+                var normalized = text!.Replace("\r\n", "\n").Replace('\r', '\n');
                 await File.WriteAllTextAsync(temporaryOutput, normalized, new UTF8Encoding(false), token);
                 return new TemporaryOutputProductionResult(true);
             },
@@ -55,22 +62,19 @@ public sealed class TxtMarkdownConversionAdapter : IConversionAdapter
             cancellationToken);
     }
 
-    private static async Task<string> ReadTextAsync(string path, CancellationToken token)
+    private static async Task<(bool Success, string? Text)> TryReadTextAsync(string path, CancellationToken token)
     {
         var utf8Strict = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
         try
         {
             using var stream = File.OpenRead(path);
             using var reader = new StreamReader(stream, utf8Strict, detectEncodingFromByteOrderMarks: true);
-            return await reader.ReadToEndAsync(token);
+            var text = await reader.ReadToEndAsync(token);
+            return (true, text);
         }
         catch (DecoderFallbackException)
         {
-            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-            var win1251 = Encoding.GetEncoding(1251);
-            using var stream = File.OpenRead(path);
-            using var reader = new StreamReader(stream, win1251, detectEncodingFromByteOrderMarks: false);
-            return await reader.ReadToEndAsync(token);
+            return (false, null);
         }
     }
 }

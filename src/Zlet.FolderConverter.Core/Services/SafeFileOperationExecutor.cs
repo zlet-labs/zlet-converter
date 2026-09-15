@@ -281,7 +281,12 @@ internal sealed class SafeFileOperationExecutor
                     finalValidation.ErrorCode);
             }
 
-            return new ConversionResult(operation, OperationStatus.Succeeded, successMessage, successDiagnostic);
+            return new ConversionResult(
+                operation,
+                OperationStatus.Succeeded,
+                successMessage,
+                successDiagnostic,
+                promotedCompanionDir ? targetCompanionDir : null);
         }
         catch (OperationCanceledException)
         {

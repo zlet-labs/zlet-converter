@@ -139,8 +139,12 @@ Zlet Converter всё ещё находится в статусе **PRE-ALPHA**.
 
 - Windows x64
 - .NET 8 SDK
+- Rust 1.88.0 (зафиксирован в `rust-toolchain.toml`)
+
+Сначала соберите нативный Markdown-воркер, затем решение .NET:
 
 ```powershell
+cargo build --manifest-path src/Zlet.FolderConverter.AnydocWorker/Cargo.toml --release --locked
 dotnet restore FolderConverter.sln
 dotnet build FolderConverter.sln -c Release
 dotnet test FolderConverter.sln -c Release

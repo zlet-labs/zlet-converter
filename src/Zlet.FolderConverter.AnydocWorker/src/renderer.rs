@@ -176,6 +176,21 @@ pub fn sanitize_markdown_image_url(url: &str) -> String {
     }
 }
 
+pub fn encode_asset_markdown_url(path: &str) -> String {
+    let mut out = String::with_capacity(path.len() * 3 / 2);
+    for byte in path.as_bytes() {
+        match *byte {
+            b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' | b'/' => {
+                out.push(*byte as char);
+            }
+            b => {
+                out.push_str(&format!("%{:02X}", b));
+            }
+        }
+    }
+    out
+}
+
 pub fn escape_markdown_text(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     for (line_idx, line) in text.split('\n').enumerate() {
@@ -441,12 +456,25 @@ pub fn render_document_to_markdown(
 }
 
 fn render_note(note: &Note, ctx: &RenderContext, out: &mut String) {
-    out.push_str(&format!("[^{}]: ", note.id));
     let mut note_content = String::new();
     for block in &note.blocks {
         render_block(block, ctx, 0, &mut note_content);
     }
-    out.push_str(note_content.trim());
+    let trimmed = note_content.trim();
+    out.push_str(&format!("[^{}]: ", note.id));
+    let mut first = true;
+    for line in trimmed.lines() {
+        if first {
+            out.push_str(line);
+            first = false;
+        } else {
+            out.push('\n');
+            if !line.trim().is_empty() {
+                out.push_str("    ");
+                out.push_str(line);
+            }
+        }
+    }
     out.push_str("\n\n");
 }
 fn render_block(block: &Block, ctx: &RenderContext, depth: usize, out: &mut String) {
@@ -642,6 +670,19 @@ pub fn render_adaptive_table(table: &Table, ctx: &RenderContext, out: &mut Strin
     }
 }
 
+fn render_table_cell_inlines(inlines: &[Inline], ctx: &RenderContext, out: &mut String) {
+    for inline in inlines {
+        match inline {
+            Inline::LineBreak => {
+                out.push_str("<br>");
+            }
+            _ => {
+                render_inlines(std::slice::from_ref(inline), ctx, out);
+            }
+        }
+    }
+}
+
 pub fn render_gfm_table(table: &Table, ctx: &RenderContext, out: &mut String) {
     let width = table.grid.iter().map(|r| r.len()).max().unwrap_or(0);
     if width == 0 {
@@ -661,7 +702,7 @@ pub fn render_gfm_table(table: &Table, ctx: &RenderContext, out: &mut String) {
                         }
                         if let Block::Paragraph(inlines) = b {
                             let mut s = String::new();
-                            render_inlines(inlines, ctx, &mut s);
+                            render_table_cell_inlines(inlines, ctx, &mut s);
                             cell_text.push_str(&s);
                         } else {
                             let mut s = String::new();
@@ -813,17 +854,23 @@ pub fn render_cell_blocks_html(blocks: &[Block], ctx: &RenderContext, out: &mut 
                 out.push_str(&format!("</h{}>", clamped));
             }
             Block::List(list) => {
-                let tag = match list.marker {
-                    MarkerKind::Bullet => "ul",
-                    _ => "ol",
+                let (open_tag, close_tag) = match list.marker {
+                    MarkerKind::Bullet => ("<ul>".to_string(), "</ul>"),
+                    _ => {
+                        if list.start != 1 {
+                            (format!("<ol start=\"{}\">", list.start), "</ol>")
+                        } else {
+                            ("<ol>".to_string(), "</ol>")
+                        }
+                    }
                 };
-                out.push_str(&format!("<{}>", tag));
+                out.push_str(&open_tag);
                 for item in &list.items {
                     out.push_str("<li>");
                     render_cell_blocks_html(&item.blocks, ctx, out);
                     out.push_str("</li>");
                 }
-                out.push_str(&format!("</{}>", tag));
+                out.push_str(close_tag);
             }
             Block::Table(sub_table) => {
                 render_html_table(sub_table, ctx, out);
@@ -897,7 +944,7 @@ pub fn render_inlines_html(inlines: &[Inline], ctx: &RenderContext, out: &mut St
                 let src = match source {
                     ImageSource::External(u) => sanitize_image_url(u),
                     ImageSource::Asset(id) => {
-                        ctx.asset_map.get(&id.0).map(|s| html_escape(s)).unwrap_or_default()
+                        ctx.asset_map.get(&id.0).map(|s| encode_asset_markdown_url(s)).unwrap_or_default()
                     }
                     ImageSource::Unavailable => String::new(),
                 };
@@ -980,7 +1027,7 @@ pub fn render_inlines(inlines: &[Inline], ctx: &RenderContext, out: &mut String)
                 let url = match source {
                     ImageSource::External(u) => sanitize_markdown_image_url(u),
                     ImageSource::Asset(id) => {
-                        ctx.asset_map.get(&id.0).cloned().unwrap_or_default()
+                        ctx.asset_map.get(&id.0).map(|s| encode_asset_markdown_url(s)).unwrap_or_default()
                     }
                     ImageSource::Unavailable => String::new(),
                 };
@@ -1463,5 +1510,74 @@ mod tests {
         assert_eq!(fs::read(&target_file).unwrap(), vec![0x89, 0x50, 0x4E, 0x47]);
 
         let _ = fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_encode_asset_markdown_url() {
+        assert_eq!(
+            encode_asset_markdown_url("test_assets/image-001.png"),
+            "test_assets/image-001.png"
+        );
+        assert_eq!(
+            encode_asset_markdown_url("Q1 report (final)_assets/image-001.png"),
+            "Q1%20report%20%28final%29_assets/image-001.png"
+        );
+        let cyrillic_encoded = encode_asset_markdown_url("отчёт_assets/image.png");
+        assert!(cyrillic_encoded.contains("%D0%BE%D1%82%D1%87%D1%91%D1%82_assets/image.png"));
+    }
+
+    #[test]
+    fn test_multiline_footnote_indentation() {
+        let note = Note {
+            id: "1".into(),
+            kind: NoteKind::Footnote,
+            blocks: vec![
+                Block::Paragraph(vec![Inline::plain("First paragraph")]),
+                Block::Paragraph(vec![Inline::plain("Second paragraph")]),
+            ],
+        };
+        let ctx = RenderContext { asset_map: HashMap::new() };
+        let mut out = String::new();
+        render_note(&note, &ctx, &mut out);
+        assert!(out.starts_with("[^1]: First paragraph\n\n    Second paragraph\n\n"));
+    }
+
+    #[test]
+    fn test_gfm_table_preserves_line_break_as_br() {
+        let table = Table {
+            grid: vec![
+                vec![
+                    CellSlot::Origin(Cell::new(vec![Block::Paragraph(vec![
+                        Inline::plain("Line 1"),
+                        Inline::LineBreak,
+                        Inline::plain("Line 2"),
+                    ])])),
+                ],
+            ],
+            header_rows: 0,
+            kind: TableKind::Data,
+        };
+        let ctx = RenderContext { asset_map: HashMap::new() };
+        let mut out = String::new();
+        render_gfm_table(&table, &ctx, &mut out);
+        assert!(out.contains("Line 1<br>Line 2"));
+    }
+
+    #[test]
+    fn test_html_table_cell_ordered_list_start() {
+        let list = List {
+            marker: MarkerKind::Decimal,
+            start: 5,
+            items: vec![
+                ListItem {
+                    blocks: vec![Block::Paragraph(vec![Inline::plain("Fifth item")])],
+                    marker_label: None,
+                },
+            ],
+        };
+        let ctx = RenderContext { asset_map: HashMap::new() };
+        let mut out = String::new();
+        render_cell_blocks_html(&[Block::List(list)], &ctx, &mut out);
+        assert!(out.contains("<ol start=\"5\"><li>Fifth item</li></ol>"));
     }
 }

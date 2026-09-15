@@ -93,10 +93,15 @@ public sealed class ResultZipPublisher
         foreach (var result in successful)
         {
             var sourcePath = Path.GetFullPath(result.Operation.TargetPath);
+            var allowEmptyCopy = result.Operation.Target == ConversionTarget.Copy
+                && result.Operation.SourceFormat is SourceFormat.Csv or SourceFormat.Tsv or SourceFormat.Txt or SourceFormat.Html
+                && (result.Operation.SourceSizeBytes == 0 || (File.Exists(result.Operation.SourcePath) && new FileInfo(result.Operation.SourcePath).Length == 0));
+            var allowEmptyMarkdown = result.Operation.Target == ConversionTarget.Markdown
+                && (result.Operation.SourceSizeBytes == 0 || (File.Exists(result.Operation.SourcePath) && new FileInfo(result.Operation.SourcePath).Length == 0));
+            var allowEmptyOutput = allowEmptyCopy || allowEmptyMarkdown;
+
             if (!File.Exists(sourcePath)
-                || (new FileInfo(sourcePath).Length == 0
-                    && !(result.Operation.Target == ConversionTarget.Copy
-                        && result.Operation.SourceFormat is SourceFormat.Csv or SourceFormat.Tsv))
+                || (new FileInfo(sourcePath).Length == 0 && !allowEmptyOutput)
                 || !sourcePath.StartsWith(
                     stagingRoot + Path.DirectorySeparatorChar,
                     StringComparison.OrdinalIgnoreCase)
@@ -114,11 +119,17 @@ public sealed class ResultZipPublisher
 
             entries.Add(new ZipSourceEntry(sourcePath, entryName));
 
-            var targetStem = Path.GetFileNameWithoutExtension(sourcePath);
-            var parentDir = Path.GetDirectoryName(sourcePath)!;
-            var companionDir = Path.Combine(parentDir, $"{targetStem}_assets");
-            if (Directory.Exists(companionDir))
+            if (!string.IsNullOrWhiteSpace(result.CompanionDirectoryPath) && Directory.Exists(result.CompanionDirectoryPath))
             {
+                var companionDir = Path.GetFullPath(result.CompanionDirectoryPath);
+                if (!companionDir.StartsWith(
+                        stagingRoot + Path.DirectorySeparatorChar,
+                        StringComparison.OrdinalIgnoreCase)
+                    || HasReparsePoint(companionDir))
+                {
+                    throw new InvalidDataException("A companion asset output is unsafe.");
+                }
+
                 foreach (var file in Directory.EnumerateFiles(companionDir, "*", SearchOption.AllDirectories))
                 {
                     var fileFullPath = Path.GetFullPath(file);

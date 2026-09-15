@@ -130,4 +130,14 @@
   <sys:String x:Key="ScannedPdfUnsupported">The PDF does not contain extractable text (possibly a scanned document). Optical character recognition (OCR) is not supported.</sys:String>
   <sys:String x:Key="DoclingConversionFailed">Failed to convert document to Markdown.</sys:String>
   <sys:String x:Key="LegacyPptTableSemanticsPartial">Converted with a limitation: table structure in legacy PPT files may be simplified.</sys:String>
+  <sys:String x:Key="DocumentEncrypted">The document is password-protected or encrypted.</sys:String>
+  <sys:String x:Key="DocumentResourceLimit">Resource limit exceeded while processing document.</sys:String>
+  <sys:String x:Key="MalformedDocument">Document structure is corrupted or invalid.</sys:String>
+  <sys:String x:Key="DocumentReadError">Failed to read document contents.</sys:String>
+  <sys:String x:Key="AssetExportError">Failed to export embedded document assets.</sys:String>
+  <sys:String x:Key="AnydocWorkerStartFailure">Failed to launch Markdown worker process.</sys:String>
+  <sys:String x:Key="AnydocProtocolError">Invalid response from Markdown worker process.</sys:String>
+  <sys:String x:Key="AnydocWorkerMissingResponse">Markdown worker process terminated without response.</sys:String>
+  <sys:String x:Key="TextEncodingUnsupported">Text file encoding is not supported.</sys:String>
+  <sys:String x:Key="CompanionAssetsInvalid">Result companion assets failed validation.</sys:String>
 </ResourceDictionary>

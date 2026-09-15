@@ -88,6 +88,14 @@ public sealed class InstallerPackagingTests
         Assert.Contains("profile = \"minimal\"", content);
     }
 
+    [Fact]
+    public void Readme_documents_cargo_build_before_dotnet_build()
+    {
+        var root = FindRepositoryRoot();
+        var readme = File.ReadAllText(Path.Combine(root, "README.md"));
+        Assert.Contains("cargo build --manifest-path src/Zlet.FolderConverter.AnydocWorker/Cargo.toml --release --locked", readme);
+    }
+
     private static string FindRepositoryRoot()
     {
         for (var directory = new DirectoryInfo(AppContext.BaseDirectory);

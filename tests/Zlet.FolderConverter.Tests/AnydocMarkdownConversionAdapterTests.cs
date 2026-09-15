@@ -488,6 +488,100 @@ public sealed class AnydocMarkdownConversionAdapterTests : IDisposable
         Assert.Contains("zipped_doc_assets/image-001.png", entryNames);
     }
 
+    [Fact]
+    public async Task ResultZipPublisher_only_includes_companion_directory_when_owned_by_result()
+    {
+        var targetDir = Path.Combine(_rootPath, "_converted_unowned");
+        Directory.CreateDirectory(targetDir);
+        var targetPath = Path.Combine(targetDir, "doc.md");
+        await File.WriteAllTextAsync(targetPath, "# Document without assets");
+
+        // Create an unowned directory that matches the naming convention
+        var foreignCompanionDir = Path.Combine(targetDir, "doc_assets");
+        Directory.CreateDirectory(foreignCompanionDir);
+        await File.WriteAllTextAsync(Path.Combine(foreignCompanionDir, "foreign.png"), "not-owned");
+
+        var sourcePath = Path.Combine(_rootPath, "doc.txt");
+        await File.WriteAllTextAsync(sourcePath, "source");
+
+        var operation = new PlannedOperation(
+            sourcePath,
+            "doc.txt",
+            SourceFormat.Txt,
+            ConversionTarget.Markdown,
+            ".md",
+            targetPath,
+            true,
+            OperationStatus.Ready,
+            "ready",
+            targetDir);
+
+        // Result without CompanionDirectoryPath set (null)
+        var convResult = new ConversionResult(operation, OperationStatus.Succeeded, "success", CompanionDirectoryPath: null);
+
+        var summary = new ConversionSummary(
+            Succeeded: 1,
+            Conflicts: 0,
+            Failed: 0,
+            Skipped: 0,
+            EngineUnavailable: 0,
+            Unsupported: 0,
+            Results: new[] { convResult });
+
+        var zipPath = Path.Combine(_rootPath, "unowned.zip");
+        var publisher = new ResultZipPublisher();
+        var pubResult = await publisher.PublishAsync(targetDir, zipPath, summary, CancellationToken.None);
+
+        Assert.True(pubResult.Created);
+        using var archive = System.IO.Compression.ZipFile.OpenRead(zipPath);
+        var entryNames = archive.Entries.Select(e => e.FullName).ToList();
+        Assert.Contains("doc.md", entryNames);
+        Assert.DoesNotContain("doc_assets/foreign.png", entryNames);
+    }
+
+    [Fact]
+    public async Task ResultZipPublisher_allows_empty_markdown_output_from_empty_source()
+    {
+        var targetDir = Path.Combine(_rootPath, "_converted_empty");
+        Directory.CreateDirectory(targetDir);
+        var targetPath = Path.Combine(targetDir, "empty.md");
+        await File.WriteAllTextAsync(targetPath, "");
+
+        var sourcePath = Path.Combine(_rootPath, "empty.txt");
+        await File.WriteAllTextAsync(sourcePath, "");
+
+        var operation = new PlannedOperation(
+            sourcePath,
+            "empty.txt",
+            SourceFormat.Txt,
+            ConversionTarget.Markdown,
+            ".md",
+            targetPath,
+            true,
+            OperationStatus.Ready,
+            "ready",
+            targetDir);
+
+        var convResult = new ConversionResult(operation, OperationStatus.Succeeded, "success");
+        var summary = new ConversionSummary(
+            Succeeded: 1,
+            Conflicts: 0,
+            Failed: 0,
+            Skipped: 0,
+            EngineUnavailable: 0,
+            Unsupported: 0,
+            Results: new[] { convResult });
+
+        var zipPath = Path.Combine(_rootPath, "empty.zip");
+        var publisher = new ResultZipPublisher();
+        var pubResult = await publisher.PublishAsync(targetDir, zipPath, summary, CancellationToken.None);
+
+        Assert.True(pubResult.Created);
+        using var archive = System.IO.Compression.ZipFile.OpenRead(zipPath);
+        var entryNames = archive.Entries.Select(e => e.FullName).ToList();
+        Assert.Contains("empty.md", entryNames);
+    }
+
     private PlannedOperation CreateOperation(string sourcePath, string outputName, SourceFormat format)
     {
         var targetDir = Path.Combine(_rootPath, "_converted");

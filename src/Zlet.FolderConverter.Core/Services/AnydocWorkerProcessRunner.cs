@@ -118,6 +118,10 @@ public sealed class AnydocWorkerProcessRunner : IAnydocWorkerRunner
                 {
                     _session = await StartSessionAsync(cancellationToken);
                 }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
                 catch (AnydocVersionIncompatibleException ex)
                 {
                     return new(false, "anydoc_version_incompatible", ex.Message);
@@ -144,6 +148,32 @@ public sealed class AnydocWorkerProcessRunner : IAnydocWorkerRunner
         }
     }
 
+    private static void KillAndWaitAndDispose(Process? process)
+    {
+        if (process is null) return;
+        try
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+                process.WaitForExit(1000);
+            }
+        }
+        catch
+        {
+        }
+        finally
+        {
+            try
+            {
+                process.Dispose();
+            }
+            catch
+            {
+            }
+        }
+    }
+
     private async Task<WorkerSession> StartSessionAsync(CancellationToken cancellationToken)
     {
         var startInfo = new ProcessStartInfo
@@ -159,82 +189,77 @@ public sealed class AnydocWorkerProcessRunner : IAnydocWorkerRunner
             StandardErrorEncoding = Encoding.UTF8
         };
 
-        var process = Process.Start(startInfo)
-            ?? throw new InvalidOperationException("Failed to launch Markdown worker process.");
-
-        var stderrBuffer = new StderrBuffer(32 * 1024);
-        process.ErrorDataReceived += (_, e) =>
-        {
-            if (e.Data is not null)
-            {
-                stderrBuffer.Append(e.Data);
-            }
-        };
-        process.BeginErrorReadLine();
-
-        using var handshakeCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        handshakeCts.CancelAfter(TimeSpan.FromSeconds(5));
-
-        string? readyLine;
+        Process? process = null;
         try
         {
-            readyLine = await process.StandardOutput.ReadLineAsync(handshakeCts.Token);
-        }
-        catch (OperationCanceledException)
-        {
-            try { process.Kill(entireProcessTree: true); } catch { }
-            if (cancellationToken.IsCancellationRequested)
+            process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Failed to launch Markdown worker process.");
+
+            var stderrBuffer = new StderrBuffer(32 * 1024);
+            process.ErrorDataReceived += (_, e) =>
             {
-                throw;
+                if (e.Data is not null)
+                {
+                    stderrBuffer.Append(e.Data);
+                }
+            };
+            process.BeginErrorReadLine();
+
+            using var handshakeCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            handshakeCts.CancelAfter(TimeSpan.FromSeconds(5));
+
+            string? readyLine;
+            try
+            {
+                readyLine = await process.StandardOutput.ReadLineAsync(handshakeCts.Token);
             }
-            throw new TimeoutException("Markdown worker handshake timed out.");
-        }
-        catch
-        {
-            try { process.Kill(entireProcessTree: true); } catch { }
-            throw;
-        }
+            catch (OperationCanceledException)
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                throw new TimeoutException("Markdown worker handshake timed out.");
+            }
 
-        if (string.IsNullOrWhiteSpace(readyLine))
-        {
-            try { process.Kill(entireProcessTree: true); } catch { }
-            throw new InvalidOperationException("Markdown worker failed to report ready: empty response.");
-        }
+            if (string.IsNullOrWhiteSpace(readyLine))
+            {
+                throw new InvalidOperationException("Markdown worker failed to report ready: empty response.");
+            }
 
-        try
-        {
             var handshake = JsonSerializer.Deserialize<AnydocHandshakeResponse>(readyLine, JsonOptions);
             if (handshake is null || !handshake.Ready)
             {
-                try { process.Kill(entireProcessTree: true); } catch { }
                 throw new InvalidOperationException("Markdown worker reported not ready.");
             }
 
             if (handshake.Version != "1.0")
             {
-                try { process.Kill(entireProcessTree: true); } catch { }
                 throw new AnydocVersionIncompatibleException($"Markdown worker protocol version mismatch: {handshake.Version} (expected 1.0)");
             }
 
             if (handshake.AnydocVersion != "0.2.4")
             {
-                try { process.Kill(entireProcessTree: true); } catch { }
                 throw new AnydocVersionIncompatibleException($"Markdown worker anydoc version mismatch: {handshake.AnydocVersion} (expected 0.2.4)");
             }
 
             if (handshake.AnydocRevision != "42bf1c5ecdde9eb0d96d6bd75a9e6698cf93b14c")
             {
-                try { process.Kill(entireProcessTree: true); } catch { }
                 throw new AnydocVersionIncompatibleException($"Markdown worker anydoc revision mismatch: {handshake.AnydocRevision} (expected 42bf1c5ecdde9eb0d96d6bd75a9e6698cf93b14c)");
             }
+
+            return new WorkerSession(process, stderrBuffer);
         }
         catch (JsonException ex)
         {
-            try { process.Kill(entireProcessTree: true); } catch { }
+            KillAndWaitAndDispose(process);
             throw new InvalidOperationException($"Markdown worker invalid handshake: {ex.Message}");
         }
-
-        return new WorkerSession(process, stderrBuffer);
+        catch
+        {
+            KillAndWaitAndDispose(process);
+            throw;
+        }
     }
 
     private async Task<AnydocWorkerExecutionResult> ExecuteAsync(

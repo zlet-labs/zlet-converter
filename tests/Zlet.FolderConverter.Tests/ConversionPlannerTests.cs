@@ -202,6 +202,40 @@ public sealed class ConversionPlannerTests : IDisposable
         Assert.True(Enum.IsDefined(status));
     }
 
+    [Fact]
+    public void CreatePlan_disambiguates_same_stem_markdown_collisions()
+    {
+        var file1 = Path.Combine(_rootPath, "doc.docx");
+        var file2 = Path.Combine(_rootPath, "doc.pdf");
+        File.WriteAllText(file1, "doc1");
+        File.WriteAllText(file2, "doc2");
+
+        var scan = new ScanResult(
+            _rootPath,
+            [
+                new ScannedFile(file1, "doc.docx", SourceFormat.Docx),
+                new ScannedFile(file2, "doc.pdf", SourceFormat.Pdf)
+            ],
+            []);
+
+        var resolver = new TestResolver(
+            new TestAdapter(SourceFormat.Docx, ConversionTarget.Markdown, available: true),
+            new TestAdapter(SourceFormat.Pdf, ConversionTarget.Markdown, available: true));
+
+        var rules = RuleSet.CreateDefault()
+            .WithRule(SourceFormat.Docx, ConversionTarget.Markdown)
+            .WithRule(SourceFormat.Pdf, ConversionTarget.Markdown);
+
+        var planner = new ConversionPlanner(resolver);
+        var plan = planner.CreatePlan(scan, _rootPath, rules);
+
+        Assert.Equal(2, plan.Count);
+        Assert.Equal(Path.Combine(_rootPath, "_converted", "doc.md"), plan[0].TargetPath);
+        Assert.Equal(Path.Combine(_rootPath, "_converted", "doc-2.md"), plan[1].TargetPath);
+        Assert.Equal(OperationStatus.Ready, plan[0].Status);
+        Assert.Equal(OperationStatus.Ready, plan[1].Status);
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_rootPath))

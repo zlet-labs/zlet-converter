@@ -77,7 +77,17 @@ public static class OperationMessageLocalizer
             ["output_invalid_utf8"] = "OperationOutputInvalid",
             ["markdown_mapping_unsupported"] = "OperationUnsupported",
             ["intermediate_output_missing"] = "OperationOutputMissing",
-            ["intermediate_file_invalid"] = "OperationOutputInvalid"
+            ["intermediate_file_invalid"] = "OperationOutputInvalid",
+            ["document_encrypted"] = "DocumentEncrypted",
+            ["resource_limit"] = "DocumentResourceLimit",
+            ["malformed_document"] = "MalformedDocument",
+            ["read_error"] = "DocumentReadError",
+            ["asset_export_error"] = "AssetExportError",
+            ["anydoc_worker_start_failure"] = "AnydocWorkerStartFailure",
+            ["anydoc_protocol_error"] = "AnydocProtocolError",
+            ["anydoc_worker_missing_response"] = "AnydocWorkerMissingResponse",
+            ["text_encoding_unsupported"] = "TextEncodingUnsupported",
+            ["companion_assets_invalid"] = "CompanionAssetsInvalid"
         };
 
     private static readonly IReadOnlyDictionary<string, string> KnownMessageKeys =
@@ -113,7 +123,27 @@ public static class OperationMessageLocalizer
             ["Компонент Markdown недоступен (исполняемый файл zlet-anydoc-worker.exe не найден)."] = "DoclingComponentUnavailable",
             ["Компонент преобразования Docling недоступен."] = "DoclingComponentUnavailable",
             ["Версия компонента Markdown несовместима с текущим приложением."] = "DoclingVersionIncompatible",
-            ["Не удалось преобразовать документ в Markdown."] = "DoclingConversionFailed"
+            ["Не удалось преобразовать документ в Markdown."] = "DoclingConversionFailed",
+            ["Документ защищён паролем или зашифрован."] = "DocumentEncrypted",
+            ["The document is password-protected or encrypted."] = "DocumentEncrypted",
+            ["Превышен лимит ресурсов при обработке документа."] = "DocumentResourceLimit",
+            ["Resource limit exceeded while processing document."] = "DocumentResourceLimit",
+            ["Структура документа повреждена или некорректна."] = "MalformedDocument",
+            ["Document structure is corrupted or invalid."] = "MalformedDocument",
+            ["Не удалось прочитать содержимое документа."] = "DocumentReadError",
+            ["Failed to read document contents."] = "DocumentReadError",
+            ["Не удалось экспортировать встроенные ресурсы документа."] = "AssetExportError",
+            ["Failed to export embedded document assets."] = "AssetExportError",
+            ["Не удалось запустить процесс Markdown."] = "AnydocWorkerStartFailure",
+            ["Failed to launch Markdown worker process."] = "AnydocWorkerStartFailure",
+            ["Некорректный ответ процесса Markdown."] = "AnydocProtocolError",
+            ["Invalid response from Markdown worker process."] = "AnydocProtocolError",
+            ["Процесс Markdown завершился без ответа."] = "AnydocWorkerMissingResponse",
+            ["Markdown worker process terminated without response."] = "AnydocWorkerMissingResponse",
+            ["Кодировка текстового файла не поддерживается."] = "TextEncodingUnsupported",
+            ["Text file encoding is not supported."] = "TextEncodingUnsupported",
+            ["Формат ресурсов результата не прошёл проверку."] = "CompanionAssetsInvalid",
+            ["Result companion assets failed validation."] = "CompanionAssetsInvalid"
         };
 
     public static string Localize(

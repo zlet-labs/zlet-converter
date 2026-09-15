@@ -69,7 +69,7 @@ public sealed class TxtMarkdownConversionAdapterTests : IDisposable
     }
 
     [Fact]
-    public async Task Converts_txt_with_windows_1251_fallback()
+    public async Task Rejects_bomless_non_utf8_with_text_encoding_unsupported()
     {
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
         var win1251 = Encoding.GetEncoding(1251);
@@ -82,10 +82,9 @@ public sealed class TxtMarkdownConversionAdapterTests : IDisposable
         var adapter = new TxtMarkdownConversionAdapter(new OutputResultValidator());
         var result = await adapter.ConvertAsync(operation, CancellationToken.None);
 
-        Assert.Equal(OperationStatus.Succeeded, result.Status);
-        Assert.True(File.Exists(operation.TargetPath));
-        var content = await File.ReadAllTextAsync(operation.TargetPath, Encoding.UTF8);
-        Assert.Equal("Текст в кодировке Windows-1251", content.Trim());
+        Assert.Equal(OperationStatus.Failed, result.Status);
+        Assert.Equal("text_encoding_unsupported", result.Diagnostic?.ErrorCode);
+        Assert.False(File.Exists(operation.TargetPath));
     }
 
     [Fact]
