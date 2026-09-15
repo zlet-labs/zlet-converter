@@ -37,13 +37,12 @@ public sealed class DocumentToMarkdownBatchTests : IDisposable
     [MarkdownIntegrationFact]
     public async Task Mixed_batch_markdown_conversion_to_folder_and_report_verification()
     {
-        var runner = new DoclingWorkerProcessRunner();
+        var runner = new AnydocWorkerProcessRunner();
 
         // Populate mixed files
         CopyFixture("F08_structured.docx", "document.docx");
         CopyFixture("F09_slides.pptx", "presentation.pptx");
         CopyFixture("F10_sheets.xlsx", "data.xlsx");
-        CopyFixture("F11_structural.html", "webpage.html");
         CopyFixture("F01_simple_text.pdf", "manual.pdf");
         CopyFixture("F06_scanned.pdf", "scanned.pdf");
         File.WriteAllText(Path.Combine(_sourceDir, "notes.txt"), "Important plain text notes\nLine 2");
@@ -74,7 +73,6 @@ public sealed class DocumentToMarkdownBatchTests : IDisposable
         Assert.True(File.Exists(Path.Combine(_outputDir, "document.md")));
         Assert.True(File.Exists(Path.Combine(_outputDir, "presentation.md")));
         Assert.True(File.Exists(Path.Combine(_outputDir, "data.md")));
-        Assert.True(File.Exists(Path.Combine(_outputDir, "webpage.md")));
         Assert.True(File.Exists(Path.Combine(_outputDir, "manual.md")));
         Assert.True(File.Exists(Path.Combine(_outputDir, "notes.md")));
 
@@ -94,11 +92,10 @@ public sealed class DocumentToMarkdownBatchTests : IDisposable
         Assert.Contains("DOCX → MD", report);
         Assert.Contains("PPTX → MD", report);
         Assert.Contains("XLSX → MD", report);
-        Assert.Contains("HTML → MD", report);
         Assert.Contains("PDF → MD", report);
         Assert.Contains("TXT → MD", report);
         Assert.Contains("scanned.pdf", report);
-        Assert.Contains("scanned_pdf_unsupported", report);
+        Assert.Contains("pdf_specialist_required", report);
 
         // Immutability: source files must remain identical
         foreach (var (path, initialHash) in sourceHashes)
@@ -110,9 +107,9 @@ public sealed class DocumentToMarkdownBatchTests : IDisposable
     [MarkdownIntegrationFact]
     public async Task Mixed_batch_markdown_conversion_to_zip_archive()
     {
-        var runner = new DoclingWorkerProcessRunner();
+        var runner = new AnydocWorkerProcessRunner();
 
-        CopyFixture("F11_structural.html", "article.html");
+        CopyFixture("F08_structured.docx", "document.docx");
         File.WriteAllText(Path.Combine(_sourceDir, "readme.txt"), "readme plain text");
 
         var zipPath = Path.Combine(_outputDir, "bundle.zip");
@@ -138,7 +135,7 @@ public sealed class DocumentToMarkdownBatchTests : IDisposable
         using var archive = ZipFile.OpenRead(zipPath);
 
         var entryNames = archive.Entries.Select(e => e.FullName).ToList();
-        Assert.Contains("article.md", entryNames);
+        Assert.Contains("document.md", entryNames);
         Assert.Contains("readme.md", entryNames);
         Assert.Contains("ZletConverter-report.txt", entryNames);
     }
@@ -169,12 +166,12 @@ public sealed class DocumentToMarkdownBatchTests : IDisposable
         var localization = LocalizationService.CreateStandalone("ru-RU");
         var officeDetector = new MicrosoftOfficeCapabilityTests.FakeCapabilityDetector([]);
         var officeRunner = new UnavailableOfficeRunner();
-        var doclingRunner = new DoclingWorkerProcessRunner();
+        var anydocRunner = new AnydocWorkerProcessRunner();
 
         var resolver = new DefaultConversionAdapterResolver(
             officeDetector,
             officeRunner,
-            doclingRunner);
+            anydocRunner);
 
         var scanner = new FileSystemFolderScanner();
         var planner = new ConversionPlanner(resolver);

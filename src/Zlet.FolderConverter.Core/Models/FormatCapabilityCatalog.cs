@@ -2,6 +2,11 @@ namespace Zlet.FolderConverter.Core.Models;
 
 public static class FormatCapabilityCatalog
 {
+    public const string HtmlRouteBlocker =
+        "No local Defuddle or lightweight HTML-to-Markdown engine exists in the repository. " +
+        "Python Docling was the previous placeholder in PR #79, but Python is prohibited from production. " +
+        "Following product canon, HTML route is blocked and disabled from Markdown routing until a dedicated local HTML engine (e.g. Defuddle) is integrated.";
+
     private static readonly IReadOnlyDictionary<SourceFormat, FormatCapability> Capabilities =
         new Dictionary<SourceFormat, FormatCapability>
         {
@@ -21,7 +26,7 @@ public static class FormatCapabilityCatalog
             [SourceFormat.Epub] = Capability(SourceFormat.Epub, ConversionTarget.Copy, ConversionTarget.Copy, ConversionTarget.Skip),
             [SourceFormat.Image] = Capability(SourceFormat.Image, ConversionTarget.Copy, ConversionTarget.Copy, ConversionTarget.Skip),
             [SourceFormat.Archive] = Capability(SourceFormat.Archive, ConversionTarget.Skip, ConversionTarget.Skip),
-            [SourceFormat.Html] = Capability(SourceFormat.Html, ConversionTarget.Copy, ConversionTarget.Copy, ConversionTarget.Markdown, ConversionTarget.Skip),
+            [SourceFormat.Html] = Capability(SourceFormat.Html, ConversionTarget.Copy, ConversionTarget.Copy, ConversionTarget.Skip),
             [SourceFormat.Txt] = Capability(SourceFormat.Txt, ConversionTarget.Copy, ConversionTarget.Copy, ConversionTarget.Markdown, ConversionTarget.Skip),
             [SourceFormat.Unknown] = Capability(SourceFormat.Unknown, ConversionTarget.Skip, ConversionTarget.Skip)
         };

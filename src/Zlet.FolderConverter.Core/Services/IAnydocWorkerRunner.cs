@@ -2,7 +2,7 @@ using Zlet.FolderConverter.Core.Models;
 
 namespace Zlet.FolderConverter.Core.Services;
 
-public interface IDoclingWorkerRunner
+public interface IAnydocWorkerRunner
 {
     bool IsAvailable { get; }
 
@@ -12,7 +12,7 @@ public interface IDoclingWorkerRunner
 
     Task EndBatchAsync();
 
-    Task<DoclingWorkerExecutionResult> RunAsync(
-        DoclingWorkerRequest request,
+    Task<AnydocWorkerExecutionResult> RunAsync(
+        AnydocWorkerRequest request,
         CancellationToken cancellationToken);
 }

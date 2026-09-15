@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Xunit;
 using Zlet.FolderConverter.Core.Services;
 
@@ -9,10 +9,10 @@ public sealed class MarkdownIntegrationFactAttribute : FactAttribute
 {
     public MarkdownIntegrationFactAttribute()
     {
-        var runner = new DoclingWorkerProcessRunner();
+        var runner = new AnydocWorkerProcessRunner();
         if (!runner.IsAvailable)
         {
-            Skip = "Markdown runtime is not available (install optional Markdown component to run integration tests).";
+            Skip = "Markdown runtime is not available (native anydoc worker binary not found).";
         }
     }
 }

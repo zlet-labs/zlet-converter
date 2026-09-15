@@ -7,31 +7,31 @@ public sealed class DefaultConversionAdapterResolver
 {
     private readonly IReadOnlyList<IConversionAdapter> _adapters;
     private readonly IMicrosoftOfficeWorkerRunner? _officeWorkerRunner;
-    private readonly IDoclingWorkerRunner? _doclingWorkerRunner;
+    private readonly IAnydocWorkerRunner? _anydocWorkerRunner;
 
     public DefaultConversionAdapterResolver()
         : this(
             new MicrosoftOfficeCapabilityDetector(),
             new MicrosoftOfficeWorkerProcessRunner(),
-            new DoclingWorkerProcessRunner())
+            new AnydocWorkerProcessRunner())
     {
     }
 
     public DefaultConversionAdapterResolver(
         IMicrosoftOfficeCapabilityDetector capabilityDetector,
         IMicrosoftOfficeWorkerRunner workerRunner)
-        : this(capabilityDetector, workerRunner, new DoclingWorkerProcessRunner())
+        : this(capabilityDetector, workerRunner, new AnydocWorkerProcessRunner())
     {
     }
 
     public DefaultConversionAdapterResolver(
         IMicrosoftOfficeCapabilityDetector capabilityDetector,
         IMicrosoftOfficeWorkerRunner officeWorkerRunner,
-        IDoclingWorkerRunner doclingWorkerRunner)
-        : this(CreateDefaultAdapters(capabilityDetector, officeWorkerRunner, doclingWorkerRunner))
+        IAnydocWorkerRunner anydocWorkerRunner)
+        : this(CreateDefaultAdapters(capabilityDetector, officeWorkerRunner, anydocWorkerRunner))
     {
         _officeWorkerRunner = officeWorkerRunner;
-        _doclingWorkerRunner = doclingWorkerRunner;
+        _anydocWorkerRunner = anydocWorkerRunner;
     }
 
     public DefaultConversionAdapterResolver(IEnumerable<IConversionAdapter> adapters)
@@ -48,9 +48,9 @@ public sealed class DefaultConversionAdapterResolver
         {
             await _officeWorkerRunner.BeginBatchAsync(cancellationToken);
         }
-        if (_doclingWorkerRunner is not null)
+        if (_anydocWorkerRunner is not null)
         {
-            await _doclingWorkerRunner.BeginBatchAsync(cancellationToken);
+            await _anydocWorkerRunner.BeginBatchAsync(cancellationToken);
         }
     }
 
@@ -65,9 +65,9 @@ public sealed class DefaultConversionAdapterResolver
         }
         finally
         {
-            if (_doclingWorkerRunner is not null)
+            if (_anydocWorkerRunner is not null)
             {
-                await _doclingWorkerRunner.EndBatchAsync();
+                await _anydocWorkerRunner.EndBatchAsync();
             }
         }
     }
@@ -75,7 +75,7 @@ public sealed class DefaultConversionAdapterResolver
     private static IConversionAdapter[] CreateDefaultAdapters(
         IMicrosoftOfficeCapabilityDetector capabilityDetector,
         IMicrosoftOfficeWorkerRunner officeWorkerRunner,
-        IDoclingWorkerRunner doclingWorkerRunner)
+        IAnydocWorkerRunner anydocWorkerRunner)
     {
         var validator = new OutputResultValidator();
         return
@@ -100,29 +100,9 @@ public sealed class DefaultConversionAdapterResolver
                 officeWorkerRunner,
                 validator,
                 temporaryRoot: null),
-            new DoclingConversionAdapter(
-                doclingWorkerRunner,
-                validator,
-                temporaryRoot: null),
-            new LegacyOfficeToMarkdownConversionAdapter(
-                OfficeApplicationKind.Word,
-                capabilityDetector,
-                officeWorkerRunner,
-                doclingWorkerRunner,
-                validator,
-                temporaryRoot: null),
-            new LegacyOfficeToMarkdownConversionAdapter(
-                OfficeApplicationKind.Excel,
-                capabilityDetector,
-                officeWorkerRunner,
-                doclingWorkerRunner,
-                validator,
-                temporaryRoot: null),
-            new LegacyOfficeToMarkdownConversionAdapter(
-                OfficeApplicationKind.PowerPoint,
-                capabilityDetector,
-                officeWorkerRunner,
-                doclingWorkerRunner,
+            new TxtMarkdownConversionAdapter(validator),
+            new AnydocMarkdownConversionAdapter(
+                anydocWorkerRunner,
                 validator,
                 temporaryRoot: null)
         ];

@@ -44,13 +44,22 @@ public sealed class RuleSetTests
     [InlineData(SourceFormat.Pptx, ConversionTarget.Copy)]
     [InlineData(SourceFormat.Pptx, ConversionTarget.Markdown)]
     [InlineData(SourceFormat.Pdf, ConversionTarget.Markdown)]
-    [InlineData(SourceFormat.Html, ConversionTarget.Markdown)]
     [InlineData(SourceFormat.Txt, ConversionTarget.Markdown)]
     public void Rules_accept_required_mappings(SourceFormat source, ConversionTarget target)
     {
         var rules = RuleSet.CreateDefault().WithRule(source, target);
 
         Assert.Equal(target, rules.GetRule(source).Target);
+    }
+
+    [Fact]
+    public void Html_to_markdown_is_blocked_by_html_route_blocker()
+    {
+        var capability = FormatCapabilityCatalog.Get(SourceFormat.Html);
+        Assert.False(capability.Supports(ConversionTarget.Markdown));
+        Assert.False(string.IsNullOrWhiteSpace(FormatCapabilityCatalog.HtmlRouteBlocker));
+        Assert.Throws<ArgumentException>(
+            () => RuleSet.CreateDefault().WithRule(SourceFormat.Html, ConversionTarget.Markdown));
     }
 
     [Fact]

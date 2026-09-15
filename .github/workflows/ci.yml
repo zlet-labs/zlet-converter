@@ -33,6 +33,11 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
+      - name: Build and test native worker
+        run: |
+          cargo test --manifest-path src/Zlet.FolderConverter.AnydocWorker/Cargo.toml --locked
+          cargo build --manifest-path src/Zlet.FolderConverter.AnydocWorker/Cargo.toml --release --locked
+
       - name: Restore
         run: dotnet restore FolderConverter.sln
 

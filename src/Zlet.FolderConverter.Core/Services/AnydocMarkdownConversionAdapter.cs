@@ -2,13 +2,13 @@ using Zlet.FolderConverter.Core.Models;
 
 namespace Zlet.FolderConverter.Core.Services;
 
-public sealed class DoclingConversionAdapter : IConversionAdapter
+public sealed class AnydocMarkdownConversionAdapter : IConversionAdapter
 {
-    private readonly IDoclingWorkerRunner _workerRunner;
+    private readonly IAnydocWorkerRunner _workerRunner;
     private readonly SafeFileOperationExecutor _executor;
 
-    public DoclingConversionAdapter(
-        IDoclingWorkerRunner workerRunner,
+    public AnydocMarkdownConversionAdapter(
+        IAnydocWorkerRunner workerRunner,
         IOutputResultValidator validator,
         string? temporaryRoot = null)
     {
@@ -22,12 +22,13 @@ public sealed class DoclingConversionAdapter : IConversionAdapter
 
     public bool CanConvert(SourceFormat sourceFormat, ConversionTarget target) =>
         target == ConversionTarget.Markdown
-        && sourceFormat is SourceFormat.Pdf
+        && sourceFormat is SourceFormat.Doc
             or SourceFormat.Docx
-            or SourceFormat.Pptx
+            or SourceFormat.Xls
             or SourceFormat.Xlsx
-            or SourceFormat.Html
-            or SourceFormat.Txt;
+            or SourceFormat.Ppt
+            or SourceFormat.Pptx
+            or SourceFormat.Pdf;
 
     public Task<ConversionResult> ConvertAsync(
         PlannedOperation operation,
@@ -54,7 +55,7 @@ public sealed class DoclingConversionAdapter : IConversionAdapter
                 operation,
                 OperationStatus.EngineUnavailable,
                 AvailabilityMessage,
-                new ConversionDiagnostic("docling_worker_missing")));
+                new ConversionDiagnostic("anydoc_worker_missing")));
         }
 
         return _executor.ExecuteAsync(
@@ -62,7 +63,7 @@ public sealed class DoclingConversionAdapter : IConversionAdapter
             operation.Target,
             async (temporaryOutput, token) =>
             {
-                var request = new DoclingWorkerRequest(
+                var request = new AnydocWorkerRequest(
                     Guid.NewGuid().ToString("N"),
                     operation.SourcePath,
                     temporaryOutput,
@@ -85,18 +86,24 @@ public sealed class DoclingConversionAdapter : IConversionAdapter
             cancellationToken);
     }
 
-    private static string ToUserMessage(DoclingWorkerExecutionResult result) =>
+    private static string ToUserMessage(AnydocWorkerExecutionResult result) =>
         result.ErrorCode switch
         {
-            "scanned_pdf_unsupported" =>
-                "PDF не содержит извлекаемого текста (возможно, отсканированный документ). Оптическое распознавание текста (OCR) не поддерживается.",
-            "docling_worker_timeout" when result.TimedOut =>
+            "pdf_specialist_required" =>
+                "PDF не содержит извлекаемого текста (возможно, отсканированный документ). Требуется оптическое распознавание текста (OCR).",
+            "document_encrypted" =>
+                "Документ зашифрован или защищен паролем.",
+            "resource_limit" =>
+                "Документ превысил допустимые лимиты ресурсов при обработке.",
+            "malformed_document" =>
+                "Структура документа повреждена или некорректна.",
+            "unsupported_format" =>
+                "Формат документа не поддерживается для преобразования в Markdown.",
+            "anydoc_worker_timeout" when result.TimedOut =>
                 "Преобразование превысило допустимое время.",
-            "docling_worker_missing" =>
+            "anydoc_worker_missing" =>
                 "Компонент Markdown недоступен.",
-            "docling_version_incompatible" =>
-                "Версия компонента Markdown несовместима с текущим приложением.",
-            "docling_worker_start_failure" =>
+            "anydoc_worker_start_failure" =>
                 "Не удалось запустить процесс Markdown.",
             _ when !string.IsNullOrWhiteSpace(result.ErrorMessage) =>
                 result.ErrorMessage,

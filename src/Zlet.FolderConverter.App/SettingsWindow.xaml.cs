@@ -32,7 +32,7 @@ public partial class SettingsWindow : Window
         }
         _checker = checker;
         _office = new MicrosoftOfficeCapabilityDetector().Detect();
-        _doclingAvailable = new DoclingWorkerProcessRunner().IsAvailable;
+        _doclingAvailable = new AnydocWorkerProcessRunner().IsAvailable;
         InitializeComponent();
         (Localization.Language == AppLanguage.Russian ? RussianButton : EnglishButton).IsChecked = true;
         Localization.LanguageChanged += LanguageChanged;

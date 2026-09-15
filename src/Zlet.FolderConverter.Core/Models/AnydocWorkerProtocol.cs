@@ -1,31 +1,33 @@
 namespace Zlet.FolderConverter.Core.Models;
 
-public sealed record DoclingWorkerRequest(
+public sealed record AnydocWorkerRequest(
     string Id,
     string SourcePath,
     string OutputPath,
-    SourceFormat SourceFormat);
+    SourceFormat SourceFormat,
+    string? AssetDir = null);
 
-public sealed record DoclingWorkerResponse(
+public sealed record AnydocWorkerResponse(
     string Id = "",
     bool Success = false,
     string ErrorCode = "",
     string ErrorMessage = "",
-    bool Ready = false);
+    bool HasExtractedText = false);
 
-public sealed record DoclingWorkerExecutionResult(
+public sealed record AnydocWorkerExecutionResult(
     bool Success,
     string ErrorCode = "",
     string ErrorMessage = "",
     bool TimedOut = false,
     int? ExitCode = null,
     bool HasStandardOutput = false,
-    bool HasStandardError = false);
+    bool HasStandardError = false,
+    bool HasExtractedText = false);
 
-public sealed record DoclingHandshakeResponse(
+public sealed record AnydocHandshakeResponse(
     bool Ready = false,
     string Version = "",
-    string PythonVersion = "",
-    string DoclingVersion = "",
+    string AnydocVersion = "",
+    string AnydocRevision = "",
     string ErrorCode = "",
     string ErrorMessage = "");
