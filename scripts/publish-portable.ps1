@@ -136,6 +136,18 @@ function Generate-RustNotices([string]$OutputPath) {
             Fail "Rust third-party notices are missing required dependency evidence: $requiredToken"
         }
     }
+
+    if ($noticeContent -match "(?im)^Source path:") {
+        Fail "Rust third-party notices must not include build-machine source paths."
+    }
+    foreach ($localPath in @($repoRoot, $env:USERPROFILE)) {
+        if (-not [string]::IsNullOrWhiteSpace($localPath) -and
+            $noticeContent.IndexOf(
+                $localPath,
+                [System.StringComparison]::OrdinalIgnoreCase) -ge 0) {
+            Fail "Rust third-party notices recorded a local build-machine path."
+        }
+    }
 }
 
 $runtimeIdentifier = Get-ProjectProperty "ZletPortableRuntimeIdentifier"
@@ -174,17 +186,17 @@ New-Item -ItemType Directory -Force -Path $appFolder | Out-Null
 Publish-Project $appProject $appFolder
 Publish-Project $workerProject $appFolder
 
+if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) {
+    Fail "cargo is required to build the pinned native worker for packaging."
+}
+& cargo build --manifest-path $anydocCargoToml --release --locked
+if ($LASTEXITCODE -ne 0) {
+    Fail "Anydoc worker cargo release build failed."
+}
+
 $anydocWorkerRelease = Join-Path $repoRoot "src\Zlet.FolderConverter.AnydocWorker\target\release\zlet-anydoc-worker.exe"
 if (-not (Test-Path -LiteralPath $anydocWorkerRelease -PathType Leaf)) {
-    if (Get-Command cargo -ErrorAction SilentlyContinue) {
-        & cargo build --manifest-path $anydocCargoToml --release --locked
-        if ($LASTEXITCODE -ne 0) {
-            Fail "Anydoc worker cargo release build failed."
-        }
-    }
-}
-if (-not (Test-Path -LiteralPath $anydocWorkerRelease -PathType Leaf)) {
-    Fail "Required packaging input is missing: zlet-anydoc-worker.exe (build with cargo build --release --locked)."
+    Fail "Required packaging input is missing: zlet-anydoc-worker.exe."
 }
 Copy-Item -LiteralPath $anydocWorkerRelease `
     -Destination (Join-Path $appFolder "zlet-anydoc-worker.exe") -Force
@@ -256,7 +268,8 @@ if ($forbiddenFiles) {
 $ownedTextFiles = @(
     (Join-Path $appFolder "README_PORTABLE.txt"),
     (Join-Path $appFolder "THIRD_PARTY_NOTICES.md"),
-    (Join-Path $appFolder "licenses\README.md")
+    (Join-Path $appFolder "licenses\README.md"),
+    $generatedRustNotices
 )
 foreach ($textFile in $ownedTextFiles) {
     if (Test-Path -LiteralPath $textFile) {
