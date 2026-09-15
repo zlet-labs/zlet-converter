@@ -45,6 +45,15 @@ function Assert-SafeArtifactPath([string]$Path) {
 }
 
 function Publish-Project([string]$ProjectPath, [string]$Destination) {
+    # The solution-level restore does not restore RID-specific runtime packs.
+    # Restore each packaged project for the portable RID before --no-restore publish
+    # so packaging remains reproducible even when a newer SDK is also installed.
+    & dotnet restore $ProjectPath `
+        -r $runtimeIdentifier
+    if ($LASTEXITCODE -ne 0) {
+        Fail "dotnet restore for portable runtime failed."
+    }
+
     & dotnet publish $ProjectPath `
         -c Release `
         -r $runtimeIdentifier `
