@@ -29,6 +29,8 @@ The distributable package also contains `licenses/RUST_THIRD_PARTY_NOTICES.txt`.
 That file is generated during packaging from the locked `zlet-anydoc-worker`
 dependency graph using pinned `cargo-about 0.9.1`, the repository configuration
 `licenses/cargo-about.toml`, and the template `licenses/cargo-about.hbs`.
+`cargo-about` is a build-time notice-generation tool and is not redistributed
+as part of Zlet Converter.
 
 The generated notice artifact preserves the license texts detected by
 `cargo-about` from dependency source material and maps each text to the exact
