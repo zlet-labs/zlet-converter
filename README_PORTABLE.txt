@@ -17,17 +17,27 @@ Zlet Converter v0.1.0
 .NET 8 входит в self-contained пакет. Native Markdown worker также входит в ZIP.
 
 Основной маршрут v0.1.0 — Documents -> Markdown:
-- DOC / DOCX -> Markdown: локальный anydoc worker + Zlet renderer;
-- XLS / XLSX -> Markdown: локальный anydoc/Calamine route;
-- PPT / PPTX -> Markdown: локальный anydoc route;
+- DOCX -> Markdown: локальный anydoc worker + Zlet renderer;
+- legacy DOC -> Markdown: direct local path реализован, но packaged acceptance
+  v0.1.0 остаётся provisional до публичной воспроизводимой legacy fixture;
+- XLSX -> Markdown: локальный anydoc/Calamine route;
+- legacy XLS -> Markdown: direct local path реализован, но packaged acceptance
+  v0.1.0 остаётся provisional;
+- PPTX -> Markdown: локальный anydoc route;
+- legacy PPT -> Markdown: provisional route с известным ограничением table
+  semantics;
 - обычный searchable PDF -> Markdown: локальный anydoc route;
-- scanned/OCR-required PDF -> явная диагностика pdf_specialist_required;
+- image-only/no-extractable-text scanned PDF -> явная диагностика
+  pdf_specialist_required;
+- partially searchable/mixed OCR PDF в v0.1.0 надёжно не классифицируется:
+  доступный текст может дать частичный Markdown, который нужно проверять вручную;
 - TXT -> Markdown: прямой локальный route.
 
 Для сложных таблиц Markdown renderer может использовать локальный HTML fallback
 внутри Markdown, если чистый GFM не может сохранить структуру без потерь.
-Companion images/assets сохраняются рядом с Markdown и используют относительные
-ссылки.
+Companion image/asset export реализован с относительными ссылками там, где parser
+предоставляет assets, но полная packaged-проверка Folder/ZIP/Stop остаётся
+provisional до появления публичной asset-bearing fixture.
 
 HTML -> Markdown в v0.1.0 намеренно не включён: приложение не подменяет
 отсутствующую локальную capability скрытым Python/Docling/cloud fallback.
@@ -43,8 +53,8 @@ Legacy Office modernization остаётся отдельным маршруто
 - XLS/XLSX -> отдельный UTF-8 TSV для каждого листа.
 
 Каждое Office-приложение необязательно и влияет только на операции, которым оно
-действительно требуется. Document -> Markdown через bundled anydoc worker не
-требует Microsoft Office.
+действительно требуется. Современные Document -> Markdown маршруты через bundled
+anydoc worker не требуют Microsoft Office.
 
 Без Office также сохраняются существующие безопасные локальные операции копирования
 поддерживаемых файлов. JSON можно преобразовать в TXT или Markdown.
