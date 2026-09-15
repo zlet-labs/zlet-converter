@@ -39,9 +39,20 @@ Stop with `BLOCKED` instead of guessing if the exact commit/package identity can
 - Confirm no missing-runtime/dependency error.
 - Confirm first-launch RU/EN selection works on a clean profile where practical.
 
+## Source immutability rule
+
+For every packaged Folder, ZIP and stopped-batch conversion set used below:
+
+1. record SHA-256 for every source file before the run;
+2. run the packaged operation;
+3. record SHA-256 for every source file again after the run;
+4. compare before/after hashes byte-for-byte.
+
+Any unexpected source hash change is `FAIL`. Recording only a pre-run hash is not sufficient evidence that the source remained unchanged.
+
 ## Documents → Markdown
 
-Use repository public fixtures from `evaluation/fixtures` and record input SHA-256 plus output paths/hashes.
+Use repository public fixtures from `evaluation/fixtures` and record input SHA-256 plus output paths/hashes. Apply the source immutability rule above.
 
 ### DOCX
 
@@ -153,6 +164,7 @@ For complex structures independently of companion assets:
 - Run the same batch again and confirm conflicts are reported.
 - Confirm temporary/staging directories are cleaned.
 - Confirm `ZletConverter-report.txt` uses relative paths and privacy-safe diagnostics.
+- Re-hash every source after the run and compare with its pre-run hash.
 
 ## ZIP output
 
@@ -161,6 +173,7 @@ For complex structures independently of companion assets:
 - Confirm `ZletConverter-report.txt` is at ZIP root.
 - Confirm existing ZIP is not silently overwritten.
 - Verify same-stem source collision handling is deterministic and does not overwrite one result with another.
+- Re-hash every source after the run and compare with its pre-run hash.
 - Companion-assets-in-ZIP is a separate acceptance item under **Companion assets and complex structures** and remains `BLOCKED` without a public asset-bearing fixture.
 
 ## Stop and completed results
@@ -169,9 +182,24 @@ For complex structures independently of companion assets:
 - Confirm already completed outputs remain available.
 - Confirm queued work stops starting.
 - Confirm partial report/results remain readable.
+- Re-hash every source involved in the stopped batch and compare with its pre-run hash.
 - Completed asset-bearing result preservation is a separate acceptance item and remains `BLOCKED` without a public asset-bearing fixture.
 
-## RU/EN diagnostics
+## Retained safe-copy routes
+
+Use public/reproducible supported already-compatible files. Cover DOCX/XLSX/PPTX plus representative PDF/CSV/TSV and, where repository/public fixtures are available, EPUB and supported image formats.
+
+For each safe-copy case:
+
+- select the unchanged-copy action in the packaged app;
+- record source SHA-256 before processing;
+- confirm the copied output is created in the expected relative location;
+- compare output SHA-256 with source SHA-256 and require exact equality;
+- confirm source SHA-256 is unchanged after processing;
+- confirm an existing destination is not silently overwritten;
+- record missing public fixtures as `BLOCKED` rather than treating the route as passed without evidence.
+
+## RU/EN diagnostics and live language switching
 
 Verify representative native-worker failures/limitations in both UI languages, including where reproducible:
 
@@ -181,6 +209,14 @@ Verify representative native-worker failures/limitations in both UI languages, i
 - image-only scanned PDF specialist-required diagnostic.
 
 Confirm user-facing text does not leak full private source paths or document content.
+
+Also exercise the advertised no-restart language switch:
+
+1. scan a mixed fixture set and change at least one selection/filter/sort state;
+2. switch RU ↔ EN in Settings without restarting;
+3. confirm current Preview rows, checkbox selection, active filter/sort and source/output choices remain intact;
+4. complete a small batch, switch language again, and confirm completed result rows/final counters/report availability remain intact;
+5. record any state loss as `FAIL`.
 
 ## Network/privacy observation
 
@@ -204,6 +240,7 @@ This retained route requires real Microsoft Excel and non-sensitive workbooks. U
 - Confirm empty worksheets are skipped explicitly.
 - Confirm generated worksheet filenames are deterministic and Windows-safe.
 - Confirm Unicode cell content is preserved in the exported text encoding.
+- Confirm source workbook SHA-256 is unchanged after both CSV and TSV runs.
 - Record separately which real Excel conversions/exports were actually run.
 - If Microsoft Excel or suitable non-sensitive fixtures are unavailable, record this route as `BLOCKED`, not `PASS`.
 
@@ -216,21 +253,38 @@ Where the corresponding Microsoft Office application and non-sensitive legacy fi
 - DOC → DOCX;
 - XLS → XLSX;
 - PPT → PPTX;
-- original source unchanged;
+- original source unchanged by before/after SHA-256;
 - generated modern Office file opens normally;
 - no unrelated already-open user Office process is killed.
 
 If real Office or fixtures are unavailable, mark these items `BLOCKED`, not `PASS`.
 
+## Office capability isolation
+
+The product claims Word, Excel and PowerPoint availability is isolated per capability rather than being one global Office switch.
+
+On a clean/throwaway Windows environment where a partial Office installation can be reproduced:
+
+- make at least one Office application unavailable while another remains available;
+- confirm only operations requiring the missing Office application become unavailable;
+- confirm Office-dependent operations backed by the installed application remain available;
+- confirm bundled modern DOCX/XLSX/PPTX/PDF/TXT → Markdown routes remain available regardless of Office absence;
+- confirm the UI reports the missing capability explicitly rather than globally disabling unrelated routes.
+
+If a partial-Office environment cannot be reproduced, record this acceptance item as `BLOCKED`; do not infer it from unit tests alone.
+
 ## Installer checks
 
-Where practical:
+The installer is a primary release asset. It must receive an explicit per-item verdict; these checks may not be silently omitted.
 
-- compare installer SHA-256 with `SHA256SUMS.txt`;
-- install for current user on a clean/throwaway environment;
-- confirm product name/version and shortcuts;
-- launch installed app;
-- uninstall and confirm app-owned installed files/shortcuts are removed.
+- Compare installer SHA-256 with `SHA256SUMS.txt`.
+- Install for current user on a clean/throwaway Windows environment.
+- Confirm product name/version and shortcuts.
+- Launch the installed app and confirm the bundled native worker/runtime dependencies are found.
+- Run at least one representative modern Document → Markdown conversion from the installed app.
+- Uninstall and confirm app-owned installed files/shortcuts are removed while user source/result documents remain untouched.
+
+Record each installer item as `PASS`, `FAIL` or `BLOCKED`. If a suitable clean/throwaway installation environment is unavailable, the installer acceptance is `BLOCKED`, not omitted and not inferred from the fact that CI produced a non-empty `.exe`.
 
 The installer is unsigned in v0.1.0; record SmartScreen/Unknown Publisher behavior without treating the expected warning as a functional failure.
 
@@ -269,4 +323,4 @@ Do not collapse conversion quality into one opaque score. Do not use `NOT APPLIC
 
 ## Completion rule
 
-Full v0.1.0 packaged acceptance is complete only when the evidence is reviewed under the project's evidence-review rules and GitHub Issue #90 contains the final evidence-backed verdict. Provisional `BLOCKED` capability items must remain visible rather than being silently converted into passes. Release publication alone is not packaged acceptance.
+The v0.1.0 packaged acceptance evidence set is complete only when every required section above has an explicit evidence-backed verdict and GitHub Issue #90 contains the final evidence review. A full `PASS` requires the installer checks and all non-provisional advertised routes under the available test environment to pass. Provisional `BLOCKED` capability items must remain visible rather than being silently converted into passes. Release publication alone is not packaged acceptance.
