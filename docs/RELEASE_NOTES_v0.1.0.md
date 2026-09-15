@@ -16,14 +16,14 @@ This is a functional milestone rather than a patch release. The Markdown route n
 
 ### Highlights
 
-- **DOC / DOCX → Markdown.** Local `anydoc 0.2.4` structured extraction plus the Zlet adaptive renderer.
-- **XLS / XLSX → Markdown.** Local `anydoc` / Calamine path with deterministic sheet-oriented output and displayed/cached values. Formula syntax is not invented when it is not exposed by the parser.
-- **PPT / PPTX → Markdown.** Local `anydoc` route with slide order/boundaries and supported structural content preserved where exposed upstream.
+- **DOCX → Markdown.** Local `anydoc 0.2.4` structured extraction plus the Zlet adaptive renderer. A direct legacy DOC path is implemented, but its packaged acceptance remains provisional in v0.1.0 until a public reproducible legacy fixture is added.
+- **XLSX → Markdown.** Local `anydoc` / Calamine path with deterministic sheet-oriented output and displayed/cached values. Formula syntax is not invented when it is not exposed by the parser. A direct legacy XLS path is implemented but remains packaged-acceptance provisional in v0.1.0.
+- **PPTX → Markdown.** Local `anydoc` route with slide order/boundaries and supported structural content preserved where exposed upstream. Direct legacy PPT remains provisional and has a known table-semantics limitation noted below.
 - **Searchable PDF → Markdown.** Straightforward digital text PDFs use the lightweight local route.
-- **Scanned/OCR-required PDF is explicit.** The core package returns `pdf_specialist_required` instead of silently producing poor partial Markdown.
+- **Image-only scanned PDF is explicit.** For scanned PDFs with no extractable text, including the public `F06_scanned.pdf` fixture, the core package returns `pdf_specialist_required`. v0.1.0 does not reliably classify partially searchable/mixed OCR PDFs; incidental extractable text can still produce partial Markdown and therefore requires manual review.
 - **TXT → Markdown.** Direct local conversion.
 - **Adaptive Markdown rendering.** Simple lossless structures render as normal GFM. Complex tables may use HTML inside Markdown when GFM cannot preserve merged-cell or nested structure without loss.
-- **Portable companion assets.** Images/assets are exported with deterministic relative references where available.
+- **Companion asset export is implemented, but provisional for packaged acceptance.** Images/assets use deterministic relative references where the parser exposes them. Full packaged preservation remains `BLOCKED` until a public reproducible asset-bearing fixture is included in acceptance evidence.
 - **Batch / Folder / ZIP integration.** Markdown results participate in the existing batch, conflict-protection, stop and ZIP workflows.
 - **Stable diagnostics.** Worker failures are mapped into app-owned error codes with RU/EN user-facing messages.
 - **Bundled native worker.** `zlet-anydoc-worker.exe` ships inside the Windows package. The worker protocol is `1.0`.
@@ -47,19 +47,26 @@ Existing Excel worksheet CSV/TSV export, safe-copy operations, batch reporting, 
 
 | Source | Markdown in v0.1.0 | Notes |
 |---|---|---|
-| `.doc`, `.docx` | Yes | bundled local native worker |
-| `.xls`, `.xlsx` | Yes | sheet-oriented local route |
-| `.ppt`, `.pptx` | Yes | legacy PPT has an explicit structural limitation noted below |
+| `.docx` | Yes | bundled local native worker |
+| legacy `.doc` | Provisional | direct local path implemented; packaged acceptance pending public legacy fixture |
+| `.xlsx` | Yes | sheet-oriented local route |
+| legacy `.xls` | Provisional | direct local path implemented; packaged acceptance pending public legacy fixture |
+| `.pptx` | Yes | bundled local native worker |
+| legacy `.ppt` | Provisional | known table-semantics limitation; packaged acceptance requires explicit evidence |
 | searchable `.pdf` | Yes | lightweight local route for straightforward digital PDFs |
-| scanned/OCR PDF | No core OCR | explicit `pdf_specialist_required` diagnostic |
+| image-only/no-text scanned `.pdf` | No core OCR | explicit `pdf_specialist_required` diagnostic |
+| partially searchable / mixed OCR `.pdf` | Provisional | may yield partial extracted text; manual review required |
 | `.txt` | Yes | direct local route |
 | `.html`, `.htm` | Not enabled for Markdown | no hidden Python/Docling/cloud fallback |
 
 ### Important limitations
 
 - Zlet Converter v0.1.0 is **PRE-ALPHA** and does not claim universal lossless conversion.
+- Direct legacy `.doc` and `.xls` → Markdown are implemented paths but are not treated as fully packaged-verified release capabilities until public reproducible legacy fixtures are added to acceptance.
 - Direct legacy `.ppt` → Markdown may lose table semantics when the upstream parser exposes a binary PowerPoint table only as sequential text. Zlet does not invent structure already lost upstream.
 - Complex multi-column or layout-heavy PDFs remain provisional and are not advertised as fully solved by the lightweight route.
+- Image-only/no-extractable-text scanned PDFs are explicitly routed to specialist-required diagnostics. Partially searchable/mixed OCR PDFs are not reliably classified in v0.1.0 and may expose incomplete extracted text.
+- Companion asset export is implemented, but packaged preservation is provisional until an asset-bearing public fixture can verify folder, ZIP and stopped-batch behavior end to end.
 - OCR/scanned-PDF specialist processing is not bundled in the core package.
 - HTML → Markdown is intentionally not enabled in v0.1.0 pending a dedicated lightweight local capability.
 - Password-protected, encrypted, corrupted or otherwise unsupported documents may fail explicitly.
@@ -76,7 +83,7 @@ Existing Excel worksheet CSV/TSV export, safe-copy operations, batch reporting, 
 
 The release workflow is required to run locked Rust tests/build, .NET restore/build/tests, win-x64 packaging, package validation and SHA-256 generation before creating the release assets.
 
-Full packaged Windows acceptance remains a separate evidence step and is tracked in GitHub Issue #90. Do not interpret release publication alone as proof that every clean-machine/manual acceptance item has passed.
+Full packaged Windows acceptance remains a separate evidence step and is tracked in GitHub Issue #90. `BLOCKED` provisional items stay visible in the evidence; release publication alone is not proof that every packaged/manual capability has passed.
 
 ---
 
@@ -90,14 +97,14 @@ Zlet Converter v0.1.0 — первый релиз, в центре которо�
 
 ### Главное
 
-- **DOC / DOCX → Markdown.** Локальный `anydoc 0.2.4` + Zlet adaptive renderer.
-- **XLS / XLSX → Markdown.** Локальный `anydoc` / Calamine route с детерминированным sheet-oriented результатом и displayed/cached values. Zlet не выдумывает формулы, которых parser не предоставил.
-- **PPT / PPTX → Markdown.** Локальный `anydoc` route с сохранением порядка слайдов и доступной upstream структуры.
+- **DOCX → Markdown.** Локальный `anydoc 0.2.4` + Zlet adaptive renderer. Прямой legacy DOC route реализован, но packaged acceptance в v0.1.0 остаётся provisional до появления публичной воспроизводимой legacy-фикстуры.
+- **XLSX → Markdown.** Локальный `anydoc` / Calamine route с детерминированным sheet-oriented результатом и displayed/cached values. Zlet не выдумывает формулы, которых parser не предоставил. Прямой legacy XLS route реализован, но packaged acceptance остаётся provisional.
+- **PPTX → Markdown.** Локальный `anydoc` route с сохранением порядка слайдов и доступной upstream структуры. Direct legacy PPT остаётся provisional и имеет известное ограничение семантики таблиц.
 - **Searchable PDF → Markdown.** Обычные цифровые PDF с текстовым слоем идут через лёгкий локальный route.
-- **Scanned/OCR-required PDF обрабатывается явно.** Core package возвращает `pdf_specialist_required`, а не делает вид, что плохой частичный Markdown является успешным результатом.
+- **Image-only scanned PDF обрабатывается явно.** Для scanned PDF без извлекаемого текста, включая публичную `F06_scanned.pdf`, core package возвращает `pdf_specialist_required`. v0.1.0 не умеет надёжно классифицировать partially searchable/mixed OCR PDF: случайно доступный текст может дать частичный Markdown, который требует ручной проверки.
 - **TXT → Markdown.** Прямой локальный route.
 - **Adaptive Markdown rendering.** Простые lossless-структуры выводятся как GFM. Сложные таблицы могут использовать HTML внутри Markdown, если GFM не способен сохранить merged cells или nested structure без потерь.
-- **Portable companion assets.** Изображения/assets сохраняются рядом с Markdown с относительными ссылками там, где parser их предоставляет.
+- **Companion asset export реализован, но packaged acceptance остаётся provisional.** Изображения/assets используют детерминированные относительные ссылки там, где parser их предоставляет. Полная packaged-проверка остаётся `BLOCKED` до появления публичной воспроизводимой asset-bearing fixture.
 - **Batch / Folder / ZIP.** Markdown встроен в существующие пакетные сценарии, защиту от конфликтов, Stop и ZIP output.
 - **Стабильная диагностика.** Ошибки native worker преобразуются в app-owned коды и локализованные RU/EN сообщения.
 - **Bundled native worker.** `zlet-anydoc-worker.exe` входит в Windows package. Версия worker protocol: `1.0`.
@@ -121,19 +128,26 @@ Legacy Office modernization остаётся отдельным маршруто
 
 | Исходник | Markdown | Примечание |
 |---|---|---|
-| `.doc`, `.docx` | Да | bundled local native worker |
-| `.xls`, `.xlsx` | Да | локальный sheet-oriented route |
-| `.ppt`, `.pptx` | Да | для legacy PPT есть явное ограничение ниже |
+| `.docx` | Да | bundled local native worker |
+| legacy `.doc` | Provisional | direct local route реализован; packaged acceptance ждёт публичную legacy fixture |
+| `.xlsx` | Да | локальный sheet-oriented route |
+| legacy `.xls` | Provisional | direct local route реализован; packaged acceptance ждёт публичную legacy fixture |
+| `.pptx` | Да | bundled local native worker |
+| legacy `.ppt` | Provisional | известное ограничение table semantics; нужен отдельный packaged evidence |
 | searchable `.pdf` | Да | лёгкий локальный route для обычных digital PDF |
-| scanned/OCR PDF | Нет OCR в core | явная диагностика `pdf_specialist_required` |
+| image-only/no-text scanned `.pdf` | Нет OCR в core | явная диагностика `pdf_specialist_required` |
+| partially searchable / mixed OCR `.pdf` | Provisional | возможен частичный extracted text; нужна ручная проверка |
 | `.txt` | Да | прямой локальный route |
 | `.html`, `.htm` | Markdown не включён | без скрытого Python/Docling/cloud fallback |
 
 ### Важные ограничения
 
 - Zlet Converter v0.1.0 всё ещё имеет зрелость **PRE-ALPHA** и не обещает универсальную lossless-конвертацию.
+- Direct legacy `.doc` и `.xls` → Markdown реализованы, но не считаются полностью packaged-verified capability, пока acceptance не получит публичные воспроизводимые legacy fixtures.
 - Direct legacy `.ppt` → Markdown может потерять семантику таблиц, если upstream parser уже превратил binary PowerPoint table в последовательный текст. Zlet не выдумывает утраченную структуру.
 - Сложные multi-column/layout-heavy PDF остаются provisional capability и не заявляются как полностью решённый сценарий лёгкого route.
+- Image-only/no-extractable-text scanned PDF явно получает specialist-required diagnostic. Partially searchable/mixed OCR PDF в v0.1.0 надёжно не классифицируется и может вернуть неполный extracted text.
+- Companion asset export реализован, но end-to-end packaged preservation остаётся provisional до появления публичной asset-bearing fixture для Folder/ZIP/Stop проверок.
 - OCR/scanned-PDF specialist не входит в core package.
 - HTML → Markdown намеренно не включён в v0.1.0 до отдельной лёгкой локальной capability.
 - Password-protected, encrypted, corrupted и неподдерживаемые документы могут завершиться явной ошибкой.
@@ -150,4 +164,4 @@ Legacy Office modernization остаётся отдельным маршруто
 
 Release workflow обязан выполнить locked Rust tests/build, .NET restore/build/tests, win-x64 packaging, package validation и SHA-256 перед созданием release assets.
 
-Полный packaged Windows acceptance является отдельным evidence-этапом и отслеживается в GitHub Issue #90. Сам факт публикации релиза не означает, что все clean-machine/manual acceptance проверки автоматически пройдены.
+Полный packaged Windows acceptance является отдельным evidence-этапом и отслеживается в GitHub Issue #90. Provisional пункты со статусом `BLOCKED` остаются видимыми в evidence; сам факт публикации релиза не означает, что все clean-machine/manual acceptance проверки автоматически пройдены.
