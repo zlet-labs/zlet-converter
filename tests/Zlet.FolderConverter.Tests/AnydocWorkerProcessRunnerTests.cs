@@ -102,4 +102,115 @@ public sealed class AnydocWorkerProcessRunnerTests : IDisposable
             throw;
         }
     }
+
+    [Fact]
+    public async Task Handshake_protocol_version_mismatch_fails_with_incompatible_error()
+    {
+        var runner = new AnydocWorkerProcessRunner(new AnydocWorkerOptions
+        {
+            WorkerExecutablePath = MockWorkerExePath(),
+            WorkerArguments = "wrong-protocol-version"
+        });
+
+        var request = new AnydocWorkerRequest("test-ver", "source.docx", "output.md", SourceFormat.Docx);
+        var result = await runner.RunAsync(request, CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Equal("anydoc_version_incompatible", result.ErrorCode);
+        Assert.Contains("protocol version mismatch", result.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task Handshake_anydoc_version_mismatch_fails_with_incompatible_error()
+    {
+        var runner = new AnydocWorkerProcessRunner(new AnydocWorkerOptions
+        {
+            WorkerExecutablePath = MockWorkerExePath(),
+            WorkerArguments = "wrong-anydoc-version"
+        });
+
+        var request = new AnydocWorkerRequest("test-ver", "source.docx", "output.md", SourceFormat.Docx);
+        var result = await runner.RunAsync(request, CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Equal("anydoc_version_incompatible", result.ErrorCode);
+        Assert.Contains("anydoc version mismatch", result.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task Handshake_anydoc_revision_mismatch_fails_with_incompatible_error()
+    {
+        var runner = new AnydocWorkerProcessRunner(new AnydocWorkerOptions
+        {
+            WorkerExecutablePath = MockWorkerExePath(),
+            WorkerArguments = "wrong-revision"
+        });
+
+        var request = new AnydocWorkerRequest("test-ver", "source.docx", "output.md", SourceFormat.Docx);
+        var result = await runner.RunAsync(request, CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Equal("anydoc_version_incompatible", result.ErrorCode);
+        Assert.Contains("anydoc revision mismatch", result.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task Handshake_timeout_kills_process_and_returns_timed_out_result()
+    {
+        var runner = new AnydocWorkerProcessRunner(new AnydocWorkerOptions
+        {
+            WorkerExecutablePath = MockWorkerExePath(),
+            WorkerArguments = "hang"
+        });
+
+        var request = new AnydocWorkerRequest("test-timeout", "source.docx", "output.md", SourceFormat.Docx);
+        var result = await runner.RunAsync(request, CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Equal("anydoc_worker_start_failure", result.ErrorCode);
+        Assert.True(result.TimedOut);
+    }
+
+    /// <summary>
+    /// Returns the path to the pre-built mock anydoc worker executable.
+    /// The exe and its companion runtime files are built from
+    /// tests/Zlet.FolderConverter.MockAnydocWorker and copied to the
+    /// mock-workers/ subdirectory of the test output by the CopyMockAnydocWorker MSBuild target.
+    /// </summary>
+    private static string MockWorkerExePath()
+    {
+        var exeName = "zlet-mock-anydoc-worker.exe";
+
+        // Primary location: mock-workers/ subdirectory alongside the test assembly.
+        // The CopyMockAnydocWorker MSBuild target puts all required runtime files there.
+        var mockWorkersDir = Path.Combine(AppContext.BaseDirectory, "mock-workers", exeName);
+        if (File.Exists(mockWorkersDir))
+        {
+            return mockWorkersDir;
+        }
+
+        // Fallback: the mock project's own build output (works when running from IDE
+        // without the test project's copy target having run yet).
+        for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
+        {
+            foreach (var config in new[] { "Debug", "Release" })
+            {
+                var candidate = Path.Combine(
+                    dir.FullName,
+                    "tests",
+                    "Zlet.FolderConverter.MockAnydocWorker",
+                    "bin",
+                    config,
+                    "net8.0-windows",
+                    exeName);
+                if (File.Exists(candidate))
+                {
+                    return candidate;
+                }
+            }
+        }
+
+        throw new FileNotFoundException(
+            $"Mock anydoc worker exe not found. Build the solution first. Expected: {mockWorkersDir}");
+    }
 }

@@ -63,11 +63,13 @@ public sealed class AnydocMarkdownConversionAdapter : IConversionAdapter
             operation.Target,
             async (temporaryOutput, token) =>
             {
+                var assetDir = $"{Path.GetFileNameWithoutExtension(operation.TargetPath)}_assets";
                 var request = new AnydocWorkerRequest(
                     Guid.NewGuid().ToString("N"),
                     operation.SourcePath,
                     temporaryOutput,
-                    operation.SourceFormat);
+                    operation.SourceFormat,
+                    AssetDir: assetDir);
 
                 var workerResult = await _workerRunner.RunAsync(request, token);
                 return workerResult.Success
@@ -105,8 +107,24 @@ public sealed class AnydocMarkdownConversionAdapter : IConversionAdapter
                 "Компонент Markdown недоступен.",
             "anydoc_worker_start_failure" =>
                 "Не удалось запустить процесс Markdown.",
-            _ when !string.IsNullOrWhiteSpace(result.ErrorMessage) =>
-                result.ErrorMessage,
+            "anydoc_version_incompatible" =>
+                "Версия компонента Markdown несовместима с приложением.",
+            "anydoc_worker_missing_response" =>
+                "Процесс Markdown завершился без ответа.",
+            "anydoc_protocol_error" =>
+                "Ошибка протокола взаимодействия с компонентом Markdown.",
+            "anydoc_worker_failure" =>
+                "Процесс Markdown сообщил о внутренней ошибке.",
+            "read_error" =>
+                "Не удалось прочитать исходный документ.",
+            "write_error" =>
+                "Не удалось записать файл результата Markdown.",
+            "asset_export_error" =>
+                "Не удалось извлечь встроенные изображения документа.",
+            "source_not_found" =>
+                "Исходный документ не найден.",
+            "conversion_failed" =>
+                "Не удалось преобразовать документ в Markdown.",
             _ => "Не удалось преобразовать документ в Markdown."
         };
 }

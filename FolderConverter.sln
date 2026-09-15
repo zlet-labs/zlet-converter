@@ -15,6 +15,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{42B1CDDD
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zlet.FolderConverter.Tests", "tests\Zlet.FolderConverter.Tests\Zlet.FolderConverter.Tests.csproj", "{B6BFC855-6C70-41A5-AD87-7B7BD0BBAEDB}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zlet.FolderConverter.MockAnydocWorker", "tests\Zlet.FolderConverter.MockAnydocWorker\Zlet.FolderConverter.MockAnydocWorker.csproj", "{939D5E43-2C71-483D-B4D0-57C167D87A5F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -40,11 +42,16 @@ Global
 		{B6BFC855-6C70-41A5-AD87-7B7BD0BBAEDB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B6BFC855-6C70-41A5-AD87-7B7BD0BBAEDB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B6BFC855-6C70-41A5-AD87-7B7BD0BBAEDB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{939D5E43-2C71-483D-B4D0-57C167D87A5F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{939D5E43-2C71-483D-B4D0-57C167D87A5F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{939D5E43-2C71-483D-B4D0-57C167D87A5F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{939D5E43-2C71-483D-B4D0-57C167D87A5F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{C3114F24-7E71-444B-8F8A-A0A2F562A25B} = {DF088A18-4BEB-4D65-BD8A-A5493D778522}
 		{E9581B1B-8F2B-46C7-85BF-BBF4D6E6FE6A} = {DF088A18-4BEB-4D65-BD8A-A5493D778522}
 		{AE894F2B-58E8-4C10-9309-77D1BC039860} = {DF088A18-4BEB-4D65-BD8A-A5493D778522}
 		{B6BFC855-6C70-41A5-AD87-7B7BD0BBAEDB} = {42B1CDDD-DBEC-4482-B39E-AB91C0C6B963}
+		{939D5E43-2C71-483D-B4D0-57C167D87A5F} = {42B1CDDD-DBEC-4482-B39E-AB91C0C6B963}
 	EndGlobalSection
 EndGlobal

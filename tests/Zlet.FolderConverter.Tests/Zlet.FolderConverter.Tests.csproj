@@ -27,4 +27,34 @@
     <None Include="..\..\src\Zlet.FolderConverter.AnydocWorker\target\release\zlet-anydoc-worker.exe" Link="zlet-anydoc-worker.exe" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\src\Zlet.FolderConverter.AnydocWorker\target\release\zlet-anydoc-worker.exe')" />
   </ItemGroup>
 
+  <!-- Build the mock anydoc worker and copy its exe to the test output directory. -->
+  <!-- ReferenceOutputAssembly=false: we don't want to link it, just trigger the build. -->
+  <ItemGroup>
+    <ProjectReference
+      Include="..\Zlet.FolderConverter.MockAnydocWorker\Zlet.FolderConverter.MockAnydocWorker.csproj"
+      ReferenceOutputAssembly="false"
+      OutputItemType="None"
+      Private="false" />
+  </ItemGroup>
+
+  <!-- Copy the built mock worker and all its runtime files into a mock-workers/ subdirectory
+       so the framework-dependent exe can be launched correctly from tests. -->
+  <Target Name="CopyMockAnydocWorker" AfterTargets="Build">
+    <PropertyGroup>
+      <_MockWorkerDir>$(MSBuildThisFileDirectory)..\Zlet.FolderConverter.MockAnydocWorker\bin\$(Configuration)\net8.0-windows</_MockWorkerDir>
+    </PropertyGroup>
+    <ItemGroup>
+      <_MockWorkerFiles Include="$(_MockWorkerDir)\zlet-mock-anydoc-worker.exe" />
+      <_MockWorkerFiles Include="$(_MockWorkerDir)\zlet-mock-anydoc-worker.dll" />
+      <_MockWorkerFiles Include="$(_MockWorkerDir)\zlet-mock-anydoc-worker.runtimeconfig.json" />
+      <_MockWorkerFiles Include="$(_MockWorkerDir)\zlet-mock-anydoc-worker.deps.json" />
+    </ItemGroup>
+    <Copy
+      SourceFiles="@(_MockWorkerFiles)"
+      DestinationFolder="$(OutputPath)mock-workers"
+      SkipUnchangedFiles="true"
+      Condition="Exists('$(_MockWorkerDir)\zlet-mock-anydoc-worker.exe')" />
+  </Target>
+
 </Project>
+

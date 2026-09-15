@@ -89,6 +89,22 @@ New-Item -ItemType Directory -Force -Path $appFolder | Out-Null
 Publish-Project $appProject $appFolder
 Publish-Project $workerProject $appFolder
 
+$anydocWorkerRelease = Join-Path $repoRoot "src\Zlet.FolderConverter.AnydocWorker\target\release\zlet-anydoc-worker.exe"
+if (-not (Test-Path -LiteralPath $anydocWorkerRelease -PathType Leaf)) {
+    if (Get-Command cargo -ErrorAction SilentlyContinue) {
+        $anydocCargoToml = Join-Path $repoRoot "src\Zlet.FolderConverter.AnydocWorker\Cargo.toml"
+        & cargo build --manifest-path $anydocCargoToml --release --locked
+        if ($LASTEXITCODE -ne 0) {
+            Fail "Anydoc worker cargo release build failed."
+        }
+    }
+}
+if (-not (Test-Path -LiteralPath $anydocWorkerRelease -PathType Leaf)) {
+    Fail "Required packaging input is missing: zlet-anydoc-worker.exe (build with cargo build --release --locked)."
+}
+Copy-Item -LiteralPath $anydocWorkerRelease `
+    -Destination (Join-Path $appFolder "zlet-anydoc-worker.exe") -Force
+
 Copy-Item -LiteralPath $readmePath `
     -Destination (Join-Path $appFolder "README_PORTABLE.txt") -Force
 Copy-Item -LiteralPath $licensePath `
@@ -103,6 +119,7 @@ Copy-Item -Path (Join-Path $licensesDirectory "*") `
 $requiredOutputs = @(
     (Join-Path $appFolder "$executableName.exe"),
     (Join-Path $appFolder "Zlet.FolderConverter.OfficeWorker.exe"),
+    (Join-Path $appFolder "zlet-anydoc-worker.exe"),
     (Join-Path $appFolder "README_PORTABLE.txt"),
     (Join-Path $appFolder "LICENSE.txt"),
     (Join-Path $appFolder "THIRD_PARTY_NOTICES.md")

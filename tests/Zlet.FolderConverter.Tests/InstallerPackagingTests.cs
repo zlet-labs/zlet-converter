@@ -39,6 +39,17 @@ public sealed class InstallerPackagingTests
         Assert.DoesNotContain("<ZletProductVersion>", definition);
     }
 
+    [Fact]
+    public void Packaging_scripts_require_anydoc_worker_executable()
+    {
+        var root = FindRepositoryRoot();
+        var publishPortable = File.ReadAllText(Path.Combine(root, "scripts", "publish-portable.ps1"));
+        var buildInstaller = File.ReadAllText(Path.Combine(root, "scripts", "build-installer.ps1"));
+
+        Assert.Contains("zlet-anydoc-worker.exe", publishPortable);
+        Assert.Contains("zlet-anydoc-worker.exe", buildInstaller);
+    }
+
     private static string FindRepositoryRoot()
     {
         for (var directory = new DirectoryInfo(AppContext.BaseDirectory);

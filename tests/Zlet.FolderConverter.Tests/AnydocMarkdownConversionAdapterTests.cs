@@ -235,14 +235,169 @@ public sealed class AnydocMarkdownConversionAdapterTests : IDisposable
         var mockRunner = new FakeAnydocWorkerRunner(new AnydocWorkerExecutionResult(
             Success: false,
             ErrorCode: "conversion_failed",
-            ErrorMessage: "Custom conversion failure"));
+            ErrorMessage: "Custom conversion failure with secret path: C:\\Users\\SecretUser\\secret.docx"));
 
         var adapter = new AnydocMarkdownConversionAdapter(mockRunner, new OutputResultValidator());
         var result = await adapter.ConvertAsync(operation, CancellationToken.None);
 
         Assert.Equal(OperationStatus.Failed, result.Status);
         Assert.Equal("conversion_failed", result.Diagnostic?.ErrorCode);
-        Assert.Equal("Custom conversion failure", result.Message);
+        Assert.Equal("Не удалось преобразовать документ в Markdown.", result.Message);
+        Assert.DoesNotContain("SecretUser", result.Message);
+    }
+
+    [Theory]
+    [InlineData("read_error", "Не удалось прочитать исходный документ.")]
+    [InlineData("write_error", "Не удалось записать файл результата Markdown.")]
+    [InlineData("asset_export_error", "Не удалось извлечь встроенные изображения документа.")]
+    [InlineData("anydoc_version_incompatible", "Версия компонента Markdown несовместима с приложением.")]
+    [InlineData("anydoc_protocol_error", "Ошибка протокола взаимодействия с компонентом Markdown.")]
+    [InlineData("anydoc_worker_failure", "Процесс Markdown сообщил о внутренней ошибке.")]
+    public async Task Privacy_sensitive_errors_map_to_safe_messages(string errorCode, string expectedMessage)
+    {
+        var sourcePath = Path.Combine(_rootPath, $"{errorCode}.docx");
+        await File.WriteAllTextAsync(sourcePath, "dummy content", Encoding.UTF8);
+        var operation = CreateOperation(sourcePath, $"{errorCode}.md", SourceFormat.Docx);
+        var mockRunner = new FakeAnydocWorkerRunner(new AnydocWorkerExecutionResult(
+            Success: false,
+            ErrorCode: errorCode,
+            ErrorMessage: $"Sensitive error details: C:\\Users\\Secret\\{errorCode}.docx"));
+
+        var adapter = new AnydocMarkdownConversionAdapter(mockRunner, new OutputResultValidator());
+        var result = await adapter.ConvertAsync(operation, CancellationToken.None);
+
+        Assert.Equal(OperationStatus.Failed, result.Status);
+        Assert.Equal(errorCode, result.Diagnostic?.ErrorCode);
+        Assert.Equal(expectedMessage, result.Message);
+        Assert.DoesNotContain("Secret", result.Message);
+    }
+
+    [Fact]
+    public async Task Companion_asset_directory_is_promoted_transactionally_alongside_markdown()
+    {
+        var sourcePath = Path.Combine(_rootPath, "doc_with_assets.docx");
+        await File.WriteAllTextAsync(sourcePath, "dummy content");
+        var operation = CreateOperation(sourcePath, "article.md", SourceFormat.Docx);
+
+        var mockRunner = new FakeAnydocWorkerRunner(async req =>
+        {
+            await File.WriteAllTextAsync(req.OutputPath, "# Article\n\n![diagram](article_assets/image-001.png)\n");
+            var assetDir = Path.Combine(Path.GetDirectoryName(req.OutputPath)!, req.AssetDir ?? "article_assets");
+            Directory.CreateDirectory(assetDir);
+            await File.WriteAllBytesAsync(Path.Combine(assetDir, "image-001.png"), new byte[] { 0x89, 0x50, 0x4E, 0x47 });
+            return new AnydocWorkerExecutionResult(true);
+        });
+
+        var adapter = new AnydocMarkdownConversionAdapter(mockRunner, new OutputResultValidator());
+        var result = await adapter.ConvertAsync(operation, CancellationToken.None);
+
+        Assert.Equal(OperationStatus.Succeeded, result.Status);
+        Assert.True(File.Exists(operation.TargetPath));
+        var content = await File.ReadAllTextAsync(operation.TargetPath);
+        Assert.Contains("article_assets/image-001.png", content);
+
+        var targetAssetsDir = Path.Combine(Path.GetDirectoryName(operation.TargetPath)!, "article_assets");
+        Assert.True(Directory.Exists(targetAssetsDir));
+        var targetAssetFile = Path.Combine(targetAssetsDir, "image-001.png");
+        Assert.True(File.Exists(targetAssetFile));
+        Assert.Equal(new byte[] { 0x89, 0x50, 0x4E, 0x47 }, await File.ReadAllBytesAsync(targetAssetFile));
+    }
+
+    [Fact]
+    public async Task Companion_asset_directory_collision_returns_conflict_status()
+    {
+        var sourcePath = Path.Combine(_rootPath, "doc_collision.docx");
+        await File.WriteAllTextAsync(sourcePath, "dummy content");
+        var operation = CreateOperation(sourcePath, "colliding.md", SourceFormat.Docx);
+
+        var existingCompanion = Path.Combine(Path.GetDirectoryName(operation.TargetPath)!, "colliding_assets");
+        Directory.CreateDirectory(existingCompanion);
+        await File.WriteAllTextAsync(Path.Combine(existingCompanion, "pre_existing.txt"), "do not touch");
+
+        var mockRunner = new FakeAnydocWorkerRunner(async req =>
+        {
+            await File.WriteAllTextAsync(req.OutputPath, "# Content\n");
+            var assetDir = Path.Combine(Path.GetDirectoryName(req.OutputPath)!, req.AssetDir ?? "colliding_assets");
+            Directory.CreateDirectory(assetDir);
+            await File.WriteAllBytesAsync(Path.Combine(assetDir, "image-001.png"), new byte[] { 1, 2, 3 });
+            return new AnydocWorkerExecutionResult(true);
+        });
+
+        var adapter = new AnydocMarkdownConversionAdapter(mockRunner, new OutputResultValidator());
+        var result = await adapter.ConvertAsync(operation, CancellationToken.None);
+
+        Assert.Equal(OperationStatus.Conflict, result.Status);
+        Assert.Equal("target_conflict", result.Diagnostic?.ErrorCode);
+        Assert.False(File.Exists(operation.TargetPath));
+        Assert.True(File.Exists(Path.Combine(existingCompanion, "pre_existing.txt")));
+        Assert.False(File.Exists(Path.Combine(existingCompanion, "image-001.png")));
+    }
+
+    [Fact]
+    public async Task Companion_assets_are_rolled_back_if_conversion_fails()
+    {
+        var sourcePath = Path.Combine(_rootPath, "doc_fail.docx");
+        await File.WriteAllTextAsync(sourcePath, "dummy content");
+        var operation = CreateOperation(sourcePath, "failed_doc.md", SourceFormat.Docx);
+
+        var mockRunner = new FakeAnydocWorkerRunner(async req =>
+        {
+            var assetDir = Path.Combine(Path.GetDirectoryName(req.OutputPath)!, req.AssetDir ?? "failed_doc_assets");
+            Directory.CreateDirectory(assetDir);
+            await File.WriteAllBytesAsync(Path.Combine(assetDir, "image-001.png"), new byte[] { 1, 2, 3 });
+            return new AnydocWorkerExecutionResult(false, "conversion_failed", "failed");
+        });
+
+        var adapter = new AnydocMarkdownConversionAdapter(mockRunner, new OutputResultValidator());
+        var result = await adapter.ConvertAsync(operation, CancellationToken.None);
+
+        Assert.Equal(OperationStatus.Failed, result.Status);
+        Assert.False(File.Exists(operation.TargetPath));
+        var targetAssetsDir = Path.Combine(Path.GetDirectoryName(operation.TargetPath)!, "failed_doc_assets");
+        Assert.False(Directory.Exists(targetAssetsDir));
+    }
+
+    [Fact]
+    public async Task Companion_assets_are_recursively_included_in_zip_export()
+    {
+        var sourcePath = Path.Combine(_rootPath, "doc_for_zip.docx");
+        await File.WriteAllTextAsync(sourcePath, "dummy content");
+        var operation = CreateOperation(sourcePath, "zipped_doc.md", SourceFormat.Docx);
+
+        var mockRunner = new FakeAnydocWorkerRunner(async req =>
+        {
+            await File.WriteAllTextAsync(req.OutputPath, "# Zipped\n![pic](zipped_doc_assets/image-001.png)\n");
+            var assetDir = Path.Combine(Path.GetDirectoryName(req.OutputPath)!, req.AssetDir ?? "zipped_doc_assets");
+            Directory.CreateDirectory(assetDir);
+            await File.WriteAllBytesAsync(Path.Combine(assetDir, "image-001.png"), new byte[] { 0x89, 0x50, 0x4E, 0x47 });
+            return new AnydocWorkerExecutionResult(true);
+        });
+
+        var adapter = new AnydocMarkdownConversionAdapter(mockRunner, new OutputResultValidator());
+        var convResult = await adapter.ConvertAsync(operation, CancellationToken.None);
+        Assert.Equal(OperationStatus.Succeeded, convResult.Status);
+
+        var summary = new ConversionSummary(
+            Succeeded: 1,
+            Conflicts: 0,
+            Failed: 0,
+            Skipped: 0,
+            EngineUnavailable: 0,
+            Unsupported: 0,
+            Results: new[] { convResult });
+
+        var stagingRoot = Path.GetDirectoryName(operation.TargetPath)!;
+        var zipPath = Path.Combine(_rootPath, "output.zip");
+        var publisher = new ResultZipPublisher();
+        var pubResult = await publisher.PublishAsync(stagingRoot, zipPath, summary, CancellationToken.None);
+
+        Assert.True(pubResult.Created);
+        Assert.True(File.Exists(zipPath));
+
+        using var archive = System.IO.Compression.ZipFile.OpenRead(zipPath);
+        var entryNames = archive.Entries.Select(e => e.FullName).ToList();
+        Assert.Contains("zipped_doc.md", entryNames);
+        Assert.Contains("zipped_doc_assets/image-001.png", entryNames);
     }
 
     private PlannedOperation CreateOperation(string sourcePath, string outputName, SourceFormat format)
@@ -287,15 +442,27 @@ public sealed class AnydocMarkdownConversionAdapterTests : IDisposable
         return Convert.ToHexString(sha256.ComputeHash(stream));
     }
 
-    private sealed class FakeAnydocWorkerRunner(AnydocWorkerExecutionResult result) : IAnydocWorkerRunner
+    private sealed class FakeAnydocWorkerRunner : IAnydocWorkerRunner
     {
+        private readonly AnydocWorkerExecutionResult? _fixedResult;
+        private readonly Func<AnydocWorkerRequest, Task<AnydocWorkerExecutionResult>>? _handler;
+
+        public FakeAnydocWorkerRunner(AnydocWorkerExecutionResult result) => _fixedResult = result;
+        public FakeAnydocWorkerRunner(Func<AnydocWorkerRequest, Task<AnydocWorkerExecutionResult>> handler) => _handler = handler;
+
         public bool IsAvailable => true;
         public string AvailabilityMessage => "Available";
 
         public Task BeginBatchAsync(CancellationToken cancellationToken) => Task.CompletedTask;
         public Task EndBatchAsync() => Task.CompletedTask;
 
-        public Task<AnydocWorkerExecutionResult> RunAsync(AnydocWorkerRequest request, CancellationToken cancellationToken) =>
-            Task.FromResult(result);
+        public Task<AnydocWorkerExecutionResult> RunAsync(AnydocWorkerRequest request, CancellationToken cancellationToken)
+        {
+            if (_handler is not null)
+            {
+                return _handler(request);
+            }
+            return Task.FromResult(_fixedResult ?? new AnydocWorkerExecutionResult(true));
+        }
     }
 }

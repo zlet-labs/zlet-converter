@@ -8,6 +8,8 @@ namespace Zlet.FolderConverter.Core.Services;
 public sealed record AnydocWorkerOptions
 {
     public string? WorkerExecutablePath { get; init; }
+    /// <summary>Extra arguments appended to the worker executable command line. Used in tests to select mock behaviour.</summary>
+    public string? WorkerArguments { get; init; }
     public TimeSpan Timeout { get; init; } = TimeSpan.FromMinutes(10);
     public TimeSpan ShutdownTimeout { get; init; } = TimeSpan.FromSeconds(2);
 }
@@ -114,11 +116,15 @@ public sealed class AnydocWorkerProcessRunner : IAnydocWorkerRunner
             {
                 try
                 {
-                    _session = StartSession();
+                    _session = await StartSessionAsync(cancellationToken);
                 }
                 catch (AnydocVersionIncompatibleException ex)
                 {
                     return new(false, "anydoc_version_incompatible", ex.Message);
+                }
+                catch (TimeoutException ex)
+                {
+                    return new(false, "anydoc_worker_start_failure", ex.Message, TimedOut: true);
                 }
                 catch (Exception ex)
                 {
@@ -138,11 +144,12 @@ public sealed class AnydocWorkerProcessRunner : IAnydocWorkerRunner
         }
     }
 
-    private WorkerSession StartSession()
+    private async Task<WorkerSession> StartSessionAsync(CancellationToken cancellationToken)
     {
         var startInfo = new ProcessStartInfo
         {
             FileName = _resolvedWorkerPath!,
+            Arguments = _options.WorkerArguments ?? string.Empty,
             UseShellExecute = false,
             CreateNoWindow = true,
             RedirectStandardInput = true,
@@ -165,8 +172,29 @@ public sealed class AnydocWorkerProcessRunner : IAnydocWorkerRunner
         };
         process.BeginErrorReadLine();
 
-        // Read and validate startup handshake
-        var readyLine = process.StandardOutput.ReadLine();
+        using var handshakeCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        handshakeCts.CancelAfter(TimeSpan.FromSeconds(5));
+
+        string? readyLine;
+        try
+        {
+            readyLine = await process.StandardOutput.ReadLineAsync(handshakeCts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            try { process.Kill(entireProcessTree: true); } catch { }
+            if (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            throw new TimeoutException("Markdown worker handshake timed out.");
+        }
+        catch
+        {
+            try { process.Kill(entireProcessTree: true); } catch { }
+            throw;
+        }
+
         if (string.IsNullOrWhiteSpace(readyLine))
         {
             try { process.Kill(entireProcessTree: true); } catch { }
@@ -186,6 +214,18 @@ public sealed class AnydocWorkerProcessRunner : IAnydocWorkerRunner
             {
                 try { process.Kill(entireProcessTree: true); } catch { }
                 throw new AnydocVersionIncompatibleException($"Markdown worker protocol version mismatch: {handshake.Version} (expected 1.0)");
+            }
+
+            if (handshake.AnydocVersion != "0.2.4")
+            {
+                try { process.Kill(entireProcessTree: true); } catch { }
+                throw new AnydocVersionIncompatibleException($"Markdown worker anydoc version mismatch: {handshake.AnydocVersion} (expected 0.2.4)");
+            }
+
+            if (handshake.AnydocRevision != "42bf1c5ecdde9eb0d96d6bd75a9e6698cf93b14c")
+            {
+                try { process.Kill(entireProcessTree: true); } catch { }
+                throw new AnydocVersionIncompatibleException($"Markdown worker anydoc revision mismatch: {handshake.AnydocRevision} (expected 42bf1c5ecdde9eb0d96d6bd75a9e6698cf93b14c)");
             }
         }
         catch (JsonException ex)

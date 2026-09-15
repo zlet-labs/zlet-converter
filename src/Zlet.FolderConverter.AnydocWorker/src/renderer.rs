@@ -4,7 +4,7 @@ use anydoc::model::{
 };
 use std::collections::{HashMap, HashSet};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 pub struct RenderContext {
     pub asset_map: HashMap<usize, String>,
@@ -25,37 +25,205 @@ pub fn html_escape(s: &str) -> String {
     out
 }
 
-pub fn sanitize_url(url: &str) -> String {
-    let trimmed = url.trim();
-    let lower = trimmed.to_ascii_lowercase();
-    if lower.starts_with("javascript:")
-        || lower.starts_with("data:")
-        || lower.starts_with("vbscript:")
-    {
-        return "#".to_string();
+pub fn sanitize_anchor_id(id: &str) -> String {
+    let trimmed = id.trim();
+    if trimmed.is_empty() {
+        return "anchor".to_string();
     }
-    html_escape(trimmed)
+    let mut out = String::with_capacity(trimmed.len());
+    let mut prev_dash = false;
+    for c in trimmed.chars() {
+        if c.is_ascii_alphanumeric() || c == '_' || c == '.' {
+            out.push(c);
+            prev_dash = false;
+        } else if c == '-' || c.is_whitespace() || c == ':' || c == '/' || c == '#' {
+            if !prev_dash && !out.is_empty() {
+                out.push('-');
+                prev_dash = true;
+            }
+        }
+    }
+    while out.ends_with('-') {
+        out.pop();
+    }
+    if out.is_empty() {
+        "anchor".to_string()
+    } else {
+        out
+    }
+}
+
+fn strip_control_chars(raw: &str) -> String {
+    raw.chars().filter(|c| !c.is_ascii_control()).collect()
+}
+
+fn extract_scheme(url: &str) -> Option<&str> {
+    let colon_pos = url.find(':')?;
+    let slash_pos = url.find('/');
+    let question_pos = url.find('?');
+    let hash_pos = url.find('#');
+
+    let first_delimiter = [slash_pos, question_pos, hash_pos]
+        .into_iter()
+        .flatten()
+        .min();
+
+    if let Some(first_delim) = first_delimiter {
+        if colon_pos > first_delim {
+            return None;
+        }
+    }
+
+    let candidate = &url[..colon_pos];
+    if !candidate.is_empty()
+        && candidate
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '+' || c == '-' || c == '.')
+    {
+        Some(candidate)
+    } else {
+        None
+    }
+}
+
+pub fn is_safe_link_url(raw: &str) -> Option<String> {
+    let cleaned = strip_control_chars(raw);
+    let trimmed = cleaned.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    if let Some(stripped) = trimmed.strip_prefix('#') {
+        let safe_id = sanitize_anchor_id(stripped);
+        return Some(format!("#{}", safe_id));
+    }
+
+    if let Some(scheme) = extract_scheme(trimmed) {
+        let scheme_lower = scheme.to_ascii_lowercase();
+        match scheme_lower.as_str() {
+            "http" | "https" | "mailto" => Some(trimmed.to_string()),
+            _ => None,
+        }
+    } else {
+        Some(trimmed.to_string())
+    }
+}
+
+pub fn sanitize_url(url: &str) -> String {
+    match is_safe_link_url(url) {
+        Some(safe) => html_escape(&safe),
+        None => "#".to_string(),
+    }
 }
 
 pub fn sanitize_markdown_url(url: &str) -> String {
-    let trimmed = url.trim();
-    let lower = trimmed.to_ascii_lowercase();
-    if lower.starts_with("javascript:")
-        || lower.starts_with("data:")
-        || lower.starts_with("vbscript:")
-    {
-        return "#".to_string();
+    match is_safe_link_url(url) {
+        Some(safe) => safe
+            .replace(' ', "%20")
+            .replace('(', "%28")
+            .replace(')', "%29")
+            .replace('<', "%3C")
+            .replace('>', "%3E"),
+        None => "#".to_string(),
     }
-    trimmed
-        .replace(' ', "%20")
-        .replace('(', "%28")
-        .replace(')', "%29")
+}
+
+pub fn is_safe_image_url(raw: &str) -> Option<String> {
+    let cleaned = strip_control_chars(raw);
+    let trimmed = cleaned.trim();
+    if trimmed.is_empty() || trimmed.starts_with('#') {
+        return None;
+    }
+
+    let path_part = trimmed
+        .split('?')
+        .next()
+        .unwrap_or("")
+        .split('#')
+        .next()
+        .unwrap_or("");
+    if path_part.to_ascii_lowercase().ends_with(".svg") {
+        return None;
+    }
+
+    if let Some(scheme) = extract_scheme(trimmed) {
+        let scheme_lower = scheme.to_ascii_lowercase();
+        match scheme_lower.as_str() {
+            "http" | "https" => Some(trimmed.to_string()),
+            _ => None,
+        }
+    } else {
+        Some(trimmed.to_string())
+    }
+}
+
+pub fn sanitize_image_url(url: &str) -> String {
+    match is_safe_image_url(url) {
+        Some(safe) => html_escape(&safe),
+        None => String::new(),
+    }
+}
+
+pub fn sanitize_markdown_image_url(url: &str) -> String {
+    match is_safe_image_url(url) {
+        Some(safe) => safe
+            .replace(' ', "%20")
+            .replace('(', "%28")
+            .replace(')', "%29")
+            .replace('<', "%3C")
+            .replace('>', "%3E"),
+        None => String::new(),
+    }
 }
 
 pub fn escape_markdown_text(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
-    let mut at_line_start = true;
-    for c in text.chars() {
+    for (line_idx, line) in text.split('\n').enumerate() {
+        if line_idx > 0 {
+            out.push('\n');
+        }
+        escape_markdown_line(line, &mut out);
+    }
+    out
+}
+
+fn escape_markdown_line(line: &str, out: &mut String) {
+    let trimmed = line.trim_start();
+    let indent_len = line.len() - trimmed.len();
+    let indent = &line[..indent_len];
+    out.push_str(indent);
+
+    let mut chars = trimmed.chars().peekable();
+
+    if let Some(&first) = chars.peek() {
+        if first == '#' || first == '>' {
+            out.push('\\');
+            out.push(first);
+            chars.next();
+        } else if trimmed.starts_with("- ") || trimmed.starts_with("+ ") || trimmed.starts_with("---") {
+            out.push('\\');
+            out.push(first);
+            chars.next();
+        } else {
+            let digits_count = trimmed.chars().take_while(|c| c.is_ascii_digit()).count();
+            if digits_count > 0 && digits_count <= 9 {
+                let rem = &trimmed[digits_count..];
+                if rem.starts_with(". ") || rem.starts_with(") ") {
+                    for _ in 0..digits_count {
+                        if let Some(c) = chars.next() {
+                            out.push(c);
+                        }
+                    }
+                    out.push('\\');
+                    if let Some(punct) = chars.next() {
+                        out.push(punct);
+                    }
+                }
+            }
+        }
+    }
+
+    while let Some(c) = chars.next() {
         match c {
             '\\' => out.push_str("\\\\"),
             '*' => out.push_str("\\*"),
@@ -64,18 +232,9 @@ pub fn escape_markdown_text(text: &str) -> String {
             '[' => out.push_str("\\["),
             ']' => out.push_str("\\]"),
             '<' => out.push_str("\\<"),
-            '>' if at_line_start => out.push_str("\\>"),
-            '#' if at_line_start => out.push_str("\\#"),
-            '\n' => {
-                out.push('\n');
-                at_line_start = true;
-                continue;
-            }
             _ => out.push(c),
         }
-        at_line_start = false;
     }
-    out
 }
 
 pub fn escape_link_label(text: &str) -> String {
@@ -111,7 +270,6 @@ pub fn is_valid_image_mime(mime: &str) -> Option<&'static str> {
         "image/jpeg" | "image/jpg" => Some("jpg"),
         "image/gif" => Some("gif"),
         "image/webp" => Some("webp"),
-        "image/svg+xml" => Some("svg"),
         "image/bmp" => Some("bmp"),
         "image/tiff" => Some("tiff"),
         _ => None,
@@ -201,13 +359,18 @@ pub fn export_assets(
         .unwrap_or("document");
 
     let (asset_dir_path, asset_dir_rel) = if let Some(custom) = custom_asset_dir {
-        let p = PathBuf::from(custom);
-        let rel_name = p
+        let custom_path = Path::new(custom);
+        let abs_path = if custom_path.is_absolute() {
+            custom_path.to_path_buf()
+        } else {
+            output_dir.join(custom_path)
+        };
+        let rel_name = custom_path
             .file_name()
             .and_then(|s| s.to_str())
-            .unwrap_or("assets")
+            .unwrap_or(custom)
             .to_string();
-        (p, rel_name)
+        (abs_path, rel_name)
     } else {
         let dir_name = format!("{}_assets", stem);
         let p = output_dir.join(&dir_name);
@@ -229,7 +392,7 @@ pub fn export_assets(
                         .and_then(|s| s.to_str())
                         .unwrap_or("");
                     match p_ext.to_ascii_lowercase().as_str() {
-                        "png" | "jpg" | "jpeg" | "gif" | "webp" | "svg" | "bmp" | "tiff" => p_ext,
+                        "png" | "jpg" | "jpeg" | "gif" | "webp" | "bmp" | "tiff" => p_ext,
                         _ => continue,
                     }
                 }
@@ -288,8 +451,14 @@ fn render_note(note: &Note, ctx: &RenderContext, out: &mut String) {
 }
 fn render_block(block: &Block, ctx: &RenderContext, depth: usize, out: &mut String) {
     match block {
-        Block::Heading { level, content, .. } => {
+        Block::Heading { level, anchor, content } => {
             out.push('\n');
+            if let Some(a) = anchor {
+                let safe_id = sanitize_anchor_id(a);
+                if !safe_id.is_empty() {
+                    out.push_str(&format!("<span id=\"{}\"></span>\n", safe_id));
+                }
+            }
             let clamped = (*level).clamp(1, 6) as usize;
             for _ in 0..clamped {
                 out.push('#');
@@ -323,8 +492,26 @@ fn render_block(block: &Block, ctx: &RenderContext, depth: usize, out: &mut Stri
             out.push('\n');
         }
         Block::CodeBlock { lang, text } => {
-            out.push_str("```");
-            if let Some(l) = lang {
+            let max_backticks = text
+                .split(|c| c != '`')
+                .map(|s| s.len())
+                .max()
+                .unwrap_or(0);
+            let fence_len = std::cmp::max(3, max_backticks + 1);
+            let fence = "`".repeat(fence_len);
+            out.push_str(&fence);
+            let safe_lang = lang.as_ref().and_then(|l| {
+                let clean: String = l
+                    .chars()
+                    .filter(|c| !c.is_ascii_control() && *c != '`' && !c.is_whitespace())
+                    .collect();
+                if clean.is_empty() {
+                    None
+                } else {
+                    Some(clean)
+                }
+            });
+            if let Some(ref l) = safe_lang {
                 out.push_str(l);
             }
             out.push('\n');
@@ -332,7 +519,8 @@ fn render_block(block: &Block, ctx: &RenderContext, depth: usize, out: &mut Stri
             if !text.ends_with('\n') {
                 out.push('\n');
             }
-            out.push_str("```\n\n");
+            out.push_str(&fence);
+            out.push_str("\n\n");
         }
         Block::Rule => {
             out.push_str("---\n\n");
@@ -408,6 +596,9 @@ fn render_list(list: &List, ctx: &RenderContext, depth: usize, out: &mut String)
 }
 
 pub fn is_table_complex(table: &Table) -> bool {
+    if table.header_rows > 1 {
+        return true;
+    }
     for row in &table.grid {
         for slot in row {
             match slot {
@@ -609,8 +800,14 @@ pub fn render_cell_blocks_html(blocks: &[Block], ctx: &RenderContext, out: &mut 
                 render_inlines_html(inlines, ctx, out);
                 out.push_str("</p>");
             }
-            Block::Heading { level, content, .. } => {
+            Block::Heading { level, anchor, content } => {
                 let clamped = (*level).clamp(1, 6);
+                if let Some(a) = anchor {
+                    let safe_id = sanitize_anchor_id(a);
+                    if !safe_id.is_empty() {
+                        out.push_str(&format!("<span id=\"{}\"></span>", safe_id));
+                    }
+                }
                 out.push_str(&format!("<h{}>", clamped));
                 render_inlines_html(content, ctx, out);
                 out.push_str(&format!("</h{}>", clamped));
@@ -638,7 +835,18 @@ pub fn render_cell_blocks_html(blocks: &[Block], ctx: &RenderContext, out: &mut 
             }
             Block::CodeBlock { lang, text } => {
                 out.push_str("<pre>");
-                if let Some(l) = lang {
+                let safe_lang = lang.as_ref().and_then(|l| {
+                    let clean: String = l
+                        .chars()
+                        .filter(|c| !c.is_ascii_control() && *c != '`' && !c.is_whitespace())
+                        .collect();
+                    if clean.is_empty() {
+                        None
+                    } else {
+                        Some(clean)
+                    }
+                });
+                if let Some(ref l) = safe_lang {
                     out.push_str(&format!("<code class=\"language-{}\">", html_escape(l)));
                 } else {
                     out.push_str("<code>");
@@ -679,7 +887,7 @@ pub fn render_inlines_html(inlines: &[Inline], ctx: &RenderContext, out: &mut St
             Inline::Link { content, target } => {
                 let href = match target {
                     LinkTarget::External(u) | LinkTarget::Relative(u) => sanitize_url(u),
-                    LinkTarget::Anchor(a) => format!("#{}", html_escape(a)),
+                    LinkTarget::Anchor(a) => format!("#{}", sanitize_anchor_id(a)),
                 };
                 out.push_str(&format!("<a href=\"{}\">", href));
                 render_inlines_html(content, ctx, out);
@@ -687,13 +895,29 @@ pub fn render_inlines_html(inlines: &[Inline], ctx: &RenderContext, out: &mut St
             }
             Inline::Image { alt, source } => {
                 let src = match source {
-                    ImageSource::External(u) => sanitize_url(u),
+                    ImageSource::External(u) => sanitize_image_url(u),
                     ImageSource::Asset(id) => {
                         ctx.asset_map.get(&id.0).map(|s| html_escape(s)).unwrap_or_default()
                     }
                     ImageSource::Unavailable => String::new(),
                 };
-                out.push_str(&format!("<img src=\"{}\" alt=\"{}\" />", src, html_escape(alt)));
+                if src.is_empty() {
+                    let alt_clean = alt.trim();
+                    if alt_clean.is_empty() {
+                        out.push_str("<span class=\"image-omitted\">[Image]</span>");
+                    } else {
+                        out.push_str(&format!(
+                            "<span class=\"image-omitted\">[Image: {}]</span>",
+                            html_escape(alt_clean)
+                        ));
+                    }
+                } else {
+                    out.push_str(&format!(
+                        "<img src=\"{}\" alt=\"{}\" />",
+                        src,
+                        html_escape(alt)
+                    ));
+                }
             }
             Inline::LineBreak => {
                 out.push_str("<br />");
@@ -705,7 +929,10 @@ pub fn render_inlines_html(inlines: &[Inline], ctx: &RenderContext, out: &mut St
                 out.push_str(&format!("<code>{}</code>", html_escape(m)));
             }
             Inline::Anchor(a) => {
-                out.push_str(&format!("<span id=\"{}\"></span>", html_escape(a)));
+                let safe_id = sanitize_anchor_id(a);
+                if !safe_id.is_empty() {
+                    out.push_str(&format!("<span id=\"{}\"></span>", safe_id));
+                }
             }
             Inline::NoteRef(n) => {
                 out.push_str(&format!(
@@ -743,23 +970,30 @@ pub fn render_inlines(inlines: &[Inline], ctx: &RenderContext, out: &mut String)
             Inline::Link { content, target } => {
                 let url = match target {
                     LinkTarget::External(u) | LinkTarget::Relative(u) => sanitize_markdown_url(u),
-                    LinkTarget::Anchor(a) => format!("#{}", a),
+                    LinkTarget::Anchor(a) => format!("#{}", sanitize_anchor_id(a)),
                 };
                 out.push('[');
-                let mut label = String::new();
-                render_inlines(content, ctx, &mut label);
-                out.push_str(&escape_link_label(&label));
+                render_inlines(content, ctx, out);
                 out.push_str(&format!("]({})", url));
             }
             Inline::Image { alt, source } => {
                 let url = match source {
-                    ImageSource::External(u) => sanitize_markdown_url(u),
+                    ImageSource::External(u) => sanitize_markdown_image_url(u),
                     ImageSource::Asset(id) => {
                         ctx.asset_map.get(&id.0).cloned().unwrap_or_default()
                     }
                     ImageSource::Unavailable => String::new(),
                 };
-                out.push_str(&format!("![{}]({})", escape_link_label(alt), url));
+                if url.is_empty() {
+                    let alt_clean = alt.trim();
+                    if alt_clean.is_empty() {
+                        out.push_str("[Image]");
+                    } else {
+                        out.push_str(&format!("[Image: {}]", escape_link_label(alt_clean)));
+                    }
+                } else {
+                    out.push_str(&format!("![{}]({})", escape_link_label(alt), url));
+                }
             }
             Inline::LineBreak => {
                 out.push_str("  \n");
@@ -770,7 +1004,12 @@ pub fn render_inlines(inlines: &[Inline], ctx: &RenderContext, out: &mut String)
             Inline::Math(m) => {
                 out.push_str(&format!("${}$", m.trim()));
             }
-            Inline::Anchor(_) => {}
+            Inline::Anchor(a) => {
+                let safe_id = sanitize_anchor_id(a);
+                if !safe_id.is_empty() {
+                    out.push_str(&format!("<span id=\"{}\"></span>", safe_id));
+                }
+            }
             Inline::NoteRef(n) => {
                 out.push_str(&format!("[^{}]", n));
             }
@@ -789,9 +1028,12 @@ mod tests {
         let escaped = escape_markdown_text(input);
         assert_eq!(escaped, "\\*bold\\* \\_italic\\_ \\`code\\` \\[link\\] \\<tag> \\\\backslash");
 
-        let heading = "# Header\n> Quote";
+        let heading = "# Header\n> Quote\n- List item\n+ Another\n1. Number\n10. Ten";
         let escaped_heading = escape_markdown_text(heading);
-        assert_eq!(escaped_heading, "\\# Header\n\\> Quote");
+        assert_eq!(
+            escaped_heading,
+            "\\# Header\n\\> Quote\n\\- List item\n\\+ Another\n1\\. Number\n10\\. Ten"
+        );
     }
 
     #[test]
@@ -803,12 +1045,32 @@ mod tests {
     }
 
     #[test]
-    fn test_sanitize_url() {
+    fn test_sanitize_anchor_id() {
+        assert_eq!(sanitize_anchor_id("normal_id-1.2"), "normal_id-1.2");
+        assert_eq!(sanitize_anchor_id("Section 2.1: Overview"), "Section-2.1-Overview");
+        assert_eq!(sanitize_anchor_id("   "), "anchor");
+        assert_eq!(sanitize_anchor_id("!@#$%^"), "anchor");
+    }
+
+    #[test]
+    fn test_sanitize_url_allowlist_and_blocklist() {
+        // Safe URLs
+        assert_eq!(sanitize_url("https://example.com?a=1&b=2"), "https://example.com?a=1&amp;b=2");
+        assert_eq!(sanitize_url("http://example.org/test"), "http://example.org/test");
+        assert_eq!(sanitize_url("mailto:user@example.com"), "mailto:user@example.com");
+        assert_eq!(sanitize_url("images/pic.png"), "images/pic.png");
+        assert_eq!(sanitize_url("./doc.html"), "./doc.html");
+        assert_eq!(sanitize_url("#my-anchor"), "#my-anchor");
+
+        // Dangerous / Obfuscated URLs
         assert_eq!(sanitize_url("javascript:alert(1)"), "#");
         assert_eq!(sanitize_url("JAVASCRIPT:evil()"), "#");
+        assert_eq!(sanitize_url("jav\tascript:alert(1)"), "#");
         assert_eq!(sanitize_url("data:text/html;base64,abc"), "#");
         assert_eq!(sanitize_url("vbscript:msgbox"), "#");
-        assert_eq!(sanitize_url("https://example.com?a=1&b=2"), "https://example.com?a=1&amp;b=2");
+        assert_eq!(sanitize_url("file:///C:/Windows/System32"), "#");
+        assert_eq!(sanitize_url("about:blank"), "#");
+        assert_eq!(sanitize_url("shell:Startup"), "#");
     }
 
     #[test]
@@ -818,6 +1080,138 @@ mod tests {
             sanitize_markdown_url("https://example.com/foo bar(1)"),
             "https://example.com/foo%20bar%281%29"
         );
+        assert_eq!(sanitize_markdown_url("#heading anchor"), "#heading-anchor");
+    }
+
+    #[test]
+    fn test_svg_image_omitted() {
+        let ctx = RenderContext { asset_map: HashMap::new() };
+
+        // External SVG is omitted
+        let img_svg = Inline::Image {
+            alt: "Vector Icon".into(),
+            source: ImageSource::External("https://example.com/icon.svg".into()),
+        };
+        let mut md_out = String::new();
+        render_inlines(&[img_svg.clone()], &ctx, &mut md_out);
+        assert_eq!(md_out, "[Image: Vector Icon]");
+
+        let mut html_out = String::new();
+        render_inlines_html(&[img_svg], &ctx, &mut html_out);
+        assert_eq!(html_out, "<span class=\"image-omitted\">[Image: Vector Icon]</span>");
+
+        // Unavailable image without alt
+        let img_empty = Inline::Image {
+            alt: "".into(),
+            source: ImageSource::Unavailable,
+        };
+        let mut md_empty = String::new();
+        render_inlines(&[img_empty.clone()], &ctx, &mut md_empty);
+        assert_eq!(md_empty, "[Image]");
+
+        let mut html_empty = String::new();
+        render_inlines_html(&[img_empty], &ctx, &mut html_empty);
+        assert_eq!(html_empty, "<span class=\"image-omitted\">[Image]</span>");
+    }
+
+    #[test]
+    fn test_anchors_and_internal_links() {
+        let doc = Document {
+            blocks: vec![
+                Block::Heading {
+                    level: 2,
+                    anchor: Some("section-intro".into()),
+                    content: vec![Inline::plain("Introduction")],
+                },
+                Block::Paragraph(vec![
+                    Inline::Anchor("para-anchor".into()),
+                    Inline::plain("See "),
+                    Inline::Link {
+                        content: vec![Inline::plain("intro")],
+                        target: LinkTarget::Anchor("section-intro".into()),
+                    },
+                ]),
+            ],
+            notes: Vec::new(),
+            assets: Vec::new(),
+        };
+
+        let md = render_document_to_markdown(&doc, &HashMap::new());
+        assert!(md.contains("<span id=\"section-intro\"></span>\n## Introduction"));
+        assert!(md.contains("<span id=\"para-anchor\"></span>See [intro](#section-intro)"));
+    }
+
+    #[test]
+    fn test_link_label_not_double_escaped() {
+        let ctx = RenderContext { asset_map: HashMap::new() };
+        let link = Inline::Link {
+            content: vec![Inline::plain("[bracketed label]")],
+            target: LinkTarget::External("https://example.com".into()),
+        };
+        let mut out = String::new();
+        render_inlines(&[link], &ctx, &mut out);
+        // Bracketed text should be escaped once: \[bracketed label\], not double-escaped \\[...
+        assert_eq!(out, "[\\[bracketed label\\]](https://example.com)");
+    }
+
+    #[test]
+    fn test_code_block_fence_collision_prevention() {
+        let doc = Document {
+            blocks: vec![
+                Block::CodeBlock {
+                    lang: Some("rust".into()),
+                    text: "let s = \"```\";\nprintln!(\"{}\", s);".into(),
+                },
+            ],
+            notes: Vec::new(),
+            assets: Vec::new(),
+        };
+
+        let md = render_document_to_markdown(&doc, &HashMap::new());
+        // Contains 3 backticks in text -> fence must be at least 4 backticks
+        assert!(md.starts_with("````rust\n"));
+        assert!(md.trim_end().ends_with("````"));
+    }
+
+    #[test]
+    fn test_multi_row_headers_lowered_to_html_table() {
+        let table = Table {
+            grid: vec![
+                vec![
+                    CellSlot::Origin(Cell::new(vec![Block::Paragraph(vec![Inline::plain("H1A")])])),
+                    CellSlot::Origin(Cell::new(vec![Block::Paragraph(vec![Inline::plain("H1B")])])),
+                ],
+                vec![
+                    CellSlot::Origin(Cell::new(vec![Block::Paragraph(vec![Inline::plain("H2A")])])),
+                    CellSlot::Origin(Cell::new(vec![Block::Paragraph(vec![Inline::plain("H2B")])])),
+                ],
+                vec![
+                    CellSlot::Origin(Cell::new(vec![Block::Paragraph(vec![Inline::plain("D1")])])),
+                    CellSlot::Origin(Cell::new(vec![Block::Paragraph(vec![Inline::plain("D2")])])),
+                ],
+            ],
+            header_rows: 2,
+            kind: TableKind::Data,
+        };
+
+        assert!(is_table_complex(&table));
+
+        let ctx = RenderContext { asset_map: HashMap::new() };
+        let mut out = String::new();
+        render_adaptive_table(&table, &ctx, &mut out);
+
+        assert!(out.contains("<table>"));
+        assert!(out.contains("<thead>"));
+        assert!(out.contains("<th>H1A</th>"));
+        assert!(out.contains("<th>H1B</th>"));
+        assert!(out.contains("<th>H2A</th>"));
+        assert!(out.contains("<th>H2B</th>"));
+        assert!(out.contains("</thead>"));
+        assert!(out.contains("<tbody>"));
+        assert!(out.contains("<td>D1</td>"));
+        assert!(out.contains("<td>D2</td>"));
+        assert!(out.contains("</tbody>"));
+        assert!(out.contains("</table>"));
     }
 
     #[test]

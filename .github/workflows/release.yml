@@ -106,6 +106,14 @@ jobs:
         if: steps.gate.outputs.exists != 'true'
         run: dotnet test FolderConverter.sln -c Release --no-build --logger "trx;LogFileName=test-results.trx"
 
+      - name: Test Anydoc Worker (Rust)
+        if: steps.gate.outputs.exists != 'true'
+        run: cargo test --manifest-path src/Zlet.FolderConverter.AnydocWorker/Cargo.toml --locked
+
+      - name: Build Anydoc Worker (Rust)
+        if: steps.gate.outputs.exists != 'true'
+        run: cargo build --manifest-path src/Zlet.FolderConverter.AnydocWorker/Cargo.toml --release --locked
+
       - name: Restore win-x64 runtime packs for packaging
         if: steps.gate.outputs.exists != 'true'
         shell: pwsh
@@ -165,6 +173,15 @@ jobs:
             if ((Get-Item -LiteralPath $path).Length -le 0) {
               throw "Release file is empty: $path"
             }
+          }
+
+          # Packaging validation gate: verify zlet-anydoc-worker.exe in portable ZIP
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $zip = [System.IO.Compression.ZipFile]::OpenRead($portable)
+          $hasWorker = $zip.Entries | Where-Object { $_.Name -eq "zlet-anydoc-worker.exe" }
+          $zip.Dispose()
+          if (-not $hasWorker) {
+            throw "Packaging validation gate failed: zlet-anydoc-worker.exe is missing from portable ZIP!"
           }
 
           $installerHash = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash.ToLowerInvariant()
