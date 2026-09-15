@@ -48,7 +48,7 @@ v0.1.0 содержит первую серьёзную реализацию о�
 
 Простые структуры выводятся как обычный GFM Markdown. Если сложную таблицу нельзя сохранить в GFM без потери merged-cell или nested structure, Zlet может использовать HTML внутри Markdown вместо красивого, но неверного упрощения.
 
-Companion images/assets сохраняются с относительными локальными ссылками там, где parser их предоставляет. Folder и ZIP output остаются транзакционными, существующие результаты не перезаписываются молча.
+Companion image/asset export реализован там, где parser предоставляет assets, и использует относительные локальные ссылки. End-to-end packaged preservation в v0.1.0 остаётся **provisional**, пока acceptance не получит публичную воспроизводимую asset-bearing fixture; наличие unit coverage само по себе не считается PASS.
 
 ## Поддерживаемые форматы в v0.1.0
 
@@ -56,11 +56,15 @@ Companion images/assets сохраняются с относительными �
 
 | Исходник | Результат | Требование / статус |
 |---|---|---|
-| `.doc`, `.docx` | `.md` + companion assets при наличии | bundled local native worker |
-| `.xls`, `.xlsx` | `.md` | bundled local native worker; displayed/cached values |
-| `.ppt`, `.pptx` | `.md` + companion assets при наличии | bundled local native worker |
+| `.docx` | `.md` + companion assets при наличии | bundled local native worker |
+| legacy `.doc` | `.md` | provisional direct local path; packaged acceptance ждёт публичную legacy fixture |
+| `.xlsx` | `.md` | bundled local native worker; displayed/cached values |
+| legacy `.xls` | `.md` | provisional direct local path; packaged acceptance ждёт публичную legacy fixture |
+| `.pptx` | `.md` + companion assets при наличии | bundled local native worker |
+| legacy `.ppt` | `.md` | provisional; известное ограничение table semantics |
 | обычный searchable `.pdf` | `.md` | bundled local native worker |
-| scanned/OCR-required `.pdf` | без частичного Markdown | явная диагностика `pdf_specialist_required` |
+| image-only/no-text scanned `.pdf` | specialist-required diagnostic | явный `pdf_specialist_required`; OCR в core нет |
+| partially searchable / mixed OCR `.pdf` | provisional | случайно доступный текст может дать частичный Markdown; нужна ручная проверка |
 | `.txt` | `.md` | прямой локальный route |
 | `.html`, `.htm` | Markdown не включён в v0.1.0 | explicit unsupported capability; без скрытого cloud/Python fallback |
 | `.json` | `.md` или `.txt` | существующий локальный route |
@@ -86,7 +90,7 @@ Preview можно фильтровать нажатием строк форма
 
 Тесты с настоящим Excel запускаются только явно через `ZLET_OFFICE_INTEGRATION=1` и локальные non-sensitive fixtures. Автоматические тесты не заменяют полную clean-machine проверку и реальные Microsoft Office integration tests.
 
-Word, Excel и PowerPoint определяются независимо. Если одно приложение отсутствует, недоступна только связанная с ним Office-dependent операция. Bundled маршрут Document → Markdown не требует Microsoft Office.
+Word, Excel и PowerPoint определяются независимо. Если одно приложение отсутствует, недоступна только связанная с ним Office-dependent операция. Bundled современные маршруты Document → Markdown не требуют Microsoft Office.
 
 > **Безопасность PowerPoint:** legacy PPT modernization не запускается, пока у пользователя уже открыт PowerPoint. Markdown через native document worker является отдельным маршрутом.
 
@@ -119,9 +123,11 @@ Word, Excel и PowerPoint определяются независимо. Есл�
 
 Zlet Converter всё ещё находится в статусе **PRE-ALPHA** и не обещает универсальную lossless-конвертацию.
 
+- Direct legacy `.doc` и `.xls` → Markdown реализованы, но packaged acceptance v0.1.0 считает их provisional до появления публичных воспроизводимых legacy fixtures.
 - Direct legacy `.ppt` → Markdown может потерять семантику таблицы, если upstream parser уже представил binary PowerPoint table только как последовательный текст. Zlet не выдумывает потерянную структуру.
 - Complex multi-column/layout-heavy PDF остаётся provisional capability; v0.1.0 не заявляет, что лёгкий route полностью решает такие документы.
-- Scanned/OCR-required PDF определяется и получает явную диагностику, но optional OCR/PDF specialist пока не входит в core package.
+- Image-only/no-extractable-text scanned PDF получает specialist-required diagnostic. Partially searchable/mixed OCR PDF в v0.1.0 надёжно не классифицируется и может вернуть неполный extracted text, поэтому результат требует ручной проверки.
+- Companion asset export реализован, но packaged Folder/ZIP/Stop preservation остаётся provisional до появления публичной asset-bearing fixture в clean-machine acceptance.
 - HTML → Markdown намеренно отключён в v0.1.0 до квалификации отдельного лёгкого локального route.
 - Password-protected, encrypted, corrupted и неподдерживаемые документы могут завершиться явной ошибкой.
 
@@ -221,4 +227,4 @@ Zlet Converter — проект **Zlet Labs**: небольшие, практи�
 
 [Zlet Labs](https://zlet.app/) · [GitHub Issues](https://github.com/zlet-labs/zlet-converter/issues) · [Все релизы](https://github.com/zlet-labs/zlet-converter/releases) · [MIT License](LICENSE)
 
-Описание релиза: [docs/RELEASE_NOTES_v0.1.0.md](docs/RELEASE_NOTES_v0.1.0.md) · Чек-лист ручной проверки: [docs/manual-clean-machine-verification.md](docs/manual-clean-machine-verification.md)
+Описание релиза: [docs/RELEASE_NOTES_v0.1.0.md](docs/RELEASE_NOTES_v0.1.0.md) · Чек-лист ручной проверки: [docs/manual-clean-machine-verification-v0.1.0.md](docs/manual-clean-machine-verification-v0.1.0.md)
