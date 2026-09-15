@@ -51,18 +51,24 @@ public sealed class InstallerPackagingTests
     }
 
     [Fact]
-    public void Anydoc_license_and_rust_dependencies_exist_in_licenses_directory()
+    public void Rust_notices_are_generated_from_locked_package_specific_sources()
     {
         var root = FindRepositoryRoot();
         var anydocLicense = Path.Combine(root, "licenses", "anydoc-MIT.txt");
         var rustDeps = Path.Combine(root, "licenses", "RUST_DEPENDENCIES.md");
-        var rustLicenses = Path.Combine(root, "licenses", "RUST_THIRD_PARTY_LICENSES.txt");
+        var cargoAboutConfig = Path.Combine(root, "licenses", "cargo-about.toml");
+        var cargoAboutTemplate = Path.Combine(root, "licenses", "cargo-about.hbs");
+        var obsoleteAggregate = Path.Combine(root, "licenses", "RUST_THIRD_PARTY_LICENSES.txt");
         var thirdPartyNotices = Path.Combine(root, "THIRD_PARTY_NOTICES.md");
+        var publishPortablePath = Path.Combine(root, "scripts", "publish-portable.ps1");
+        var ciPath = Path.Combine(root, ".github", "workflows", "ci.yml");
 
         Assert.True(File.Exists(anydocLicense), "licenses/anydoc-MIT.txt must exist.");
         Assert.True(File.Exists(rustDeps), "licenses/RUST_DEPENDENCIES.md must exist.");
-        Assert.True(File.Exists(rustLicenses), "licenses/RUST_THIRD_PARTY_LICENSES.txt must exist.");
+        Assert.True(File.Exists(cargoAboutConfig), "licenses/cargo-about.toml must exist.");
+        Assert.True(File.Exists(cargoAboutTemplate), "licenses/cargo-about.hbs must exist.");
         Assert.True(File.Exists(thirdPartyNotices), "THIRD_PARTY_NOTICES.md must exist.");
+        Assert.False(File.Exists(obsoleteAggregate), "Generic license-family aggregate must not be shipped as dependency-specific evidence.");
 
         var licenseContent = File.ReadAllText(anydocLicense);
         Assert.Contains("Sideguide Technologies Inc.", licenseContent);
@@ -71,19 +77,44 @@ public sealed class InstallerPackagingTests
         var rustDepsContent = File.ReadAllText(rustDeps);
         Assert.Contains("anydoc", rustDepsContent);
         Assert.Contains("42bf1c5ecdde9eb0d96d6bd75a9e6698cf93b14c", rustDepsContent);
+        Assert.Contains("quick-xml", rustDepsContent);
+        Assert.Contains("lopdf", rustDepsContent);
+        Assert.Contains("zip", rustDepsContent);
 
-        var rustLicensesContent = File.ReadAllText(rustLicenses);
-        Assert.Contains("MIT License", rustLicensesContent);
-        Assert.Contains("Apache License", rustLicensesContent);
-        Assert.Contains("BSD 3-Clause License", rustLicensesContent);
-        Assert.Contains("The Unlicense", rustLicensesContent);
-        Assert.Contains("Zlib License", rustLicensesContent);
+        var configContent = File.ReadAllText(cargoAboutConfig);
+        Assert.Contains("x86_64-pc-windows-msvc", configContent);
+        Assert.Contains("ignore-transitive-dependencies = false", configContent);
+
+        var templateContent = File.ReadAllText(cargoAboutTemplate);
+        Assert.Contains("cargo-about 0.9.1", templateContent);
+        Assert.Contains("{{crate.name}} {{crate.version}}", templateContent);
+        Assert.Contains("{{text}}", templateContent);
+        Assert.Contains("42bf1c5ecdde9eb0d96d6bd75a9e6698cf93b14c", templateContent);
+        Assert.Contains("does not claim to synthesize notices", templateContent);
 
         var noticesContent = File.ReadAllText(thirdPartyNotices);
         Assert.Contains("anydoc", noticesContent);
         Assert.Contains("42bf1c5ecdde9eb0d96d6bd75a9e6698cf93b14c", noticesContent);
         Assert.Contains("licenses/anydoc-MIT.txt", noticesContent);
-        Assert.Contains("licenses/RUST_THIRD_PARTY_LICENSES.txt", noticesContent);
+        Assert.Contains("licenses/RUST_THIRD_PARTY_NOTICES.txt", noticesContent);
+        Assert.Contains("cargo-about 0.9.1", noticesContent);
+        Assert.Contains("does not claim legal completeness", noticesContent);
+
+        var publishPortable = File.ReadAllText(publishPortablePath);
+        Assert.Contains("$cargoAboutVersion = \"0.9.1\"", publishPortable);
+        Assert.Contains("cargo install cargo-about", publishPortable);
+        Assert.Contains("cargo about generate", publishPortable);
+        Assert.Contains("--locked", publishPortable);
+        Assert.Contains("--fail", publishPortable);
+        Assert.Contains("RUST_THIRD_PARTY_NOTICES.txt", publishPortable);
+        Assert.Contains("anydoc 0.2.4", publishPortable);
+        Assert.Contains("quick-xml 0.41.0", publishPortable);
+        Assert.Contains("lopdf 0.45.0", publishPortable);
+        Assert.Contains("zip 8.6.0", publishPortable);
+
+        var ci = File.ReadAllText(ciPath);
+        Assert.Contains("Verify portable package and Rust third-party notices", ci);
+        Assert.Contains("scripts/publish-portable.ps1", ci);
     }
 
     [Fact]
