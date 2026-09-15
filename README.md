@@ -139,8 +139,12 @@ Requirements:
 
 - Windows x64
 - .NET 8 SDK
+- Rust 1.88.0 (pinned in `rust-toolchain.toml`)
+
+Build the native Markdown worker first, then the .NET solution:
 
 ```powershell
+cargo build --manifest-path src/Zlet.FolderConverter.AnydocWorker/Cargo.toml --release --locked
 dotnet restore FolderConverter.sln
 dotnet build FolderConverter.sln -c Release
 dotnet test FolderConverter.sln -c Release

@@ -34,7 +34,8 @@ internal sealed class SafeFileOperationExecutor
         Func<string, CancellationToken, Task<TemporaryOutputProductionResult>> produceAsync,
         string successMessage,
         IProgress<int>? progress,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        ConversionDiagnostic? successDiagnostic = null)
     {
         var sourceRoot = ResolveSourceRoot(operation);
         if (!OutputPathGuard.IsSafeSourcePath(
@@ -84,16 +85,24 @@ internal sealed class SafeFileOperationExecutor
         }
 
         var operationRoot = Path.Combine(_temporaryRoot, Guid.NewGuid().ToString("N"));
+        var targetFileName = Path.GetFileName(operation.TargetPath);
+        var targetStem = Path.GetFileNameWithoutExtension(operation.TargetPath);
         var temporaryOutput = Path.Combine(
             operationRoot,
             "output",
-            $"result{operation.TargetExtension}");
+            targetFileName);
         string? stagingPath = null;
+        string? stagingCompanionDir = null;
+        string? targetCompanionDir = null;
+        var promotedTarget = false;
+        var promotedCompanionDir = false;
+
         var allowEmptyCopy = operation.Target == ConversionTarget.Copy
-            && operation.SourceFormat is SourceFormat.Csv or SourceFormat.Tsv && snapshot.Length == 0;
+            && operation.SourceFormat is SourceFormat.Csv or SourceFormat.Tsv or SourceFormat.Txt or SourceFormat.Html && snapshot.Length == 0;
+        var allowEmptyOutput = allowEmptyCopy || (operation.Target == ConversionTarget.Markdown && snapshot.Length == 0);
         async Task<OutputValidationResult> ValidateOutputAsync(string path)
         {
-            if (!allowEmptyCopy) return _validator.Validate(path, validationTarget);
+            if (!allowEmptyCopy) return _validator.Validate(path, validationTarget, snapshot.Length);
             return await snapshot.IsUnchangedAsync(path, cancellationToken)
                 ? new OutputValidationResult(true) : new OutputValidationResult(false, "copy_integrity_mismatch");
         }
@@ -116,7 +125,7 @@ internal sealed class SafeFileOperationExecutor
             }
 
             if (!File.Exists(temporaryOutput)
-                || (new FileInfo(temporaryOutput).Length == 0 && !allowEmptyCopy))
+                || (new FileInfo(temporaryOutput).Length == 0 && !allowEmptyOutput))
             {
                 return Result(
                     operation,
@@ -184,10 +193,60 @@ internal sealed class SafeFileOperationExecutor
                     "target_conflict");
             }
 
+            var companionDirName = $"{targetStem}_assets";
+            var temporaryOutputDir = Path.GetDirectoryName(temporaryOutput)!;
+            var temporaryCompanionDir = Path.Combine(temporaryOutputDir, companionDirName);
+            var hasCompanionDir = Directory.Exists(temporaryCompanionDir)
+                && Directory.EnumerateFileSystemEntries(temporaryCompanionDir).Any();
+
+            IReadOnlyList<string>? promotedCompanionFiles = null;
+            if (hasCompanionDir)
+            {
+                targetCompanionDir = Path.Combine(targetDirectory, companionDirName);
+                if (File.Exists(targetCompanionDir) || Directory.Exists(targetCompanionDir))
+                {
+                    return Result(
+                        operation,
+                        OperationStatus.Conflict,
+                        "Папка с ресурсами результата уже существует.",
+                        "target_conflict");
+                }
+
+                if (!OutputPathGuard.IsSafeTargetPath(targetCompanionDir, operation.OutputRootPath))
+                {
+                    return Result(
+                        operation,
+                        OperationStatus.Failed,
+                        "Недопустимый путь результата.",
+                        "unsafe_target");
+                }
+
+                promotedCompanionFiles = Directory.EnumerateFiles(temporaryCompanionDir, "*", SearchOption.AllDirectories)
+                    .Select(f => Path.Combine(targetCompanionDir, Path.GetRelativePath(temporaryCompanionDir, f)))
+                    .ToArray();
+            }
+
             stagingPath = Path.Combine(
                 targetDirectory,
-                $".{Path.GetFileName(operation.TargetPath)}.{Guid.NewGuid():N}.tmp");
+                $".{targetFileName}.{Guid.NewGuid():N}.tmp");
             File.Copy(temporaryOutput, stagingPath, overwrite: false);
+
+            if (hasCompanionDir)
+            {
+                stagingCompanionDir = Path.Combine(
+                    targetDirectory,
+                    $".{companionDirName}.{Guid.NewGuid():N}.tmp");
+                CopyDirectory(temporaryCompanionDir, stagingCompanionDir);
+                if (!ValidateCompanionDirectory(stagingCompanionDir))
+                {
+                    return Result(
+                        operation,
+                        OperationStatus.Failed,
+                        "Формат ресурсов результата не прошёл проверку.",
+                        "companion_assets_invalid");
+                }
+            }
+
             var stagingValidation = await ValidateOutputAsync(stagingPath);
             if (!stagingValidation.IsValid)
             {
@@ -198,12 +257,28 @@ internal sealed class SafeFileOperationExecutor
                     stagingValidation.ErrorCode);
             }
 
+            if (hasCompanionDir && stagingCompanionDir is not null && targetCompanionDir is not null)
+            {
+                Directory.Move(stagingCompanionDir, targetCompanionDir);
+                promotedCompanionDir = true;
+                stagingCompanionDir = null;
+            }
+
             File.Move(stagingPath, operation.TargetPath, overwrite: false);
+            promotedTarget = true;
             stagingPath = null;
+
             var finalValidation = await ValidateOutputAsync(operation.TargetPath);
             if (!finalValidation.IsValid)
             {
-                File.Delete(operation.TargetPath);
+                if (promotedTarget)
+                {
+                    TryDeleteFile(operation.TargetPath);
+                }
+                if (promotedCompanionDir && targetCompanionDir is not null)
+                {
+                    TryDeleteDirectoryRecursively(targetCompanionDir);
+                }
                 return Result(
                     operation,
                     OperationStatus.Failed,
@@ -211,15 +286,38 @@ internal sealed class SafeFileOperationExecutor
                     finalValidation.ErrorCode);
             }
 
-            return new ConversionResult(operation, OperationStatus.Succeeded, successMessage);
+            return new ConversionResult(
+                operation,
+                OperationStatus.Succeeded,
+                successMessage,
+                successDiagnostic,
+                promotedCompanionDir ? targetCompanionDir : null,
+                promotedCompanionDir ? promotedCompanionFiles : null);
         }
         catch (OperationCanceledException)
         {
+            if (promotedTarget)
+            {
+                TryDeleteFile(operation.TargetPath);
+            }
+            if (promotedCompanionDir && targetCompanionDir is not null)
+            {
+                TryDeleteDirectoryRecursively(targetCompanionDir);
+            }
             throw;
         }
         catch (IOException) when (File.Exists(operation.TargetPath)
-                                  || Directory.Exists(operation.TargetPath))
+                                  || Directory.Exists(operation.TargetPath)
+                                  || (targetCompanionDir is not null && (File.Exists(targetCompanionDir) || Directory.Exists(targetCompanionDir))))
         {
+            if (promotedTarget)
+            {
+                TryDeleteFile(operation.TargetPath);
+            }
+            if (promotedCompanionDir && targetCompanionDir is not null)
+            {
+                TryDeleteDirectoryRecursively(targetCompanionDir);
+            }
             return Result(
                 operation,
                 OperationStatus.Conflict,
@@ -230,6 +328,14 @@ internal sealed class SafeFileOperationExecutor
                                            or UnauthorizedAccessException
                                            or InvalidDataException)
         {
+            if (promotedTarget)
+            {
+                TryDeleteFile(operation.TargetPath);
+            }
+            if (promotedCompanionDir && targetCompanionDir is not null)
+            {
+                TryDeleteDirectoryRecursively(targetCompanionDir);
+            }
             return Result(
                 operation,
                 OperationStatus.Failed,
@@ -239,6 +345,10 @@ internal sealed class SafeFileOperationExecutor
         finally
         {
             TryDeleteFile(stagingPath);
+            if (!string.IsNullOrWhiteSpace(stagingCompanionDir))
+            {
+                TryDeleteDirectoryRecursively(stagingCompanionDir);
+            }
             TryDeleteDirectory(operationRoot);
         }
     }
@@ -319,6 +429,66 @@ internal sealed class SafeFileOperationExecutor
         catch (Exception exception) when (exception is IOException
                                            or UnauthorizedAccessException
                                            or ArgumentException)
+        {
+        }
+    }
+
+    private static void CopyDirectory(string sourceDir, string targetDir)
+    {
+        Directory.CreateDirectory(targetDir);
+        foreach (var dir in Directory.GetDirectories(sourceDir, "*", SearchOption.AllDirectories))
+        {
+            var relative = Path.GetRelativePath(sourceDir, dir);
+            Directory.CreateDirectory(Path.Combine(targetDir, relative));
+        }
+        foreach (var file in Directory.GetFiles(sourceDir, "*", SearchOption.AllDirectories))
+        {
+            var relative = Path.GetRelativePath(sourceDir, file);
+            File.Copy(file, Path.Combine(targetDir, relative), overwrite: false);
+        }
+    }
+
+    private static bool ValidateCompanionDirectory(string directory)
+    {
+        var allowedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tiff"
+        };
+
+        foreach (var file in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories))
+        {
+            if (HasReparsePoint(file)) return false;
+            var ext = Path.GetExtension(file);
+            if (!allowedExtensions.Contains(ext)) return false;
+            var name = Path.GetFileName(file);
+            if (name.StartsWith('.') || name.Contains(':')) return false;
+        }
+        return true;
+    }
+
+    private static bool HasReparsePoint(string path)
+    {
+        for (var current = path; !string.IsNullOrWhiteSpace(current); current = Path.GetDirectoryName(current) ?? "")
+        {
+            if ((File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static void TryDeleteDirectoryRecursively(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return;
+        try
+        {
+            if (Directory.Exists(path))
+            {
+                Directory.Delete(path, recursive: true);
+            }
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
         }
     }

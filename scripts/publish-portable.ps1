@@ -3,10 +3,14 @@ $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $appProject = Join-Path $repoRoot "src\Zlet.FolderConverter.App\Zlet.FolderConverter.App.csproj"
 $workerProject = Join-Path $repoRoot "src\Zlet.FolderConverter.OfficeWorker\Zlet.FolderConverter.OfficeWorker.csproj"
+$anydocCargoToml = Join-Path $repoRoot "src\Zlet.FolderConverter.AnydocWorker\Cargo.toml"
 $readmePath = Join-Path $repoRoot "README_PORTABLE.txt"
 $licensePath = Join-Path $repoRoot "LICENSE"
 $noticesPath = Join-Path $repoRoot "THIRD_PARTY_NOTICES.md"
 $licensesDirectory = Join-Path $repoRoot "licenses"
+$cargoAboutConfig = Join-Path $licensesDirectory "cargo-about.toml"
+$cargoAboutTemplate = Join-Path $licensesDirectory "cargo-about.hbs"
+$cargoAboutVersion = "0.9.1"
 
 function Fail([string]$Message) {
     Write-Error $Message
@@ -41,6 +45,15 @@ function Assert-SafeArtifactPath([string]$Path) {
 }
 
 function Publish-Project([string]$ProjectPath, [string]$Destination) {
+    # The solution-level restore does not restore RID-specific runtime packs.
+    # Restore each packaged project for the portable RID before --no-restore publish
+    # so packaging remains reproducible even when a newer SDK is also installed.
+    & dotnet restore $ProjectPath `
+        -r $runtimeIdentifier
+    if ($LASTEXITCODE -ne 0) {
+        Fail "dotnet restore for portable runtime failed."
+    }
+
     & dotnet publish $ProjectPath `
         -c Release `
         -r $runtimeIdentifier `
@@ -53,6 +66,87 @@ function Publish-Project([string]$ProjectPath, [string]$Destination) {
         -o $Destination
     if ($LASTEXITCODE -ne 0) {
         Fail "dotnet publish failed."
+    }
+}
+
+function Ensure-CargoAbout {
+    if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) {
+        Fail "cargo is required to generate Rust third-party notices."
+    }
+
+    $cargoAbout = Get-Command cargo-about -ErrorAction SilentlyContinue
+    if ($cargoAbout) {
+        $versionOutput = & $cargoAbout.Source --version
+        if ($LASTEXITCODE -eq 0 -and
+            ($versionOutput -join " ") -match "cargo-about\s+$([regex]::Escape($cargoAboutVersion))(\s|$)") {
+            return
+        }
+    }
+
+    & cargo install cargo-about `
+        --version $cargoAboutVersion `
+        --locked `
+        --features cli
+    if ($LASTEXITCODE -ne 0) {
+        Fail "Unable to install pinned cargo-about $cargoAboutVersion."
+    }
+
+    $cargoAbout = Get-Command cargo-about -ErrorAction SilentlyContinue
+    if (-not $cargoAbout) {
+        Fail "Pinned cargo-about $cargoAboutVersion is not available after installation."
+    }
+
+    $versionOutput = & $cargoAbout.Source --version
+    if ($LASTEXITCODE -ne 0 -or
+        ($versionOutput -join " ") -notmatch "cargo-about\s+$([regex]::Escape($cargoAboutVersion))(\s|$)") {
+        Fail "Pinned cargo-about $cargoAboutVersion is not available after installation."
+    }
+}
+
+function Generate-RustNotices([string]$OutputPath) {
+    Ensure-CargoAbout
+
+    & cargo about generate `
+        --manifest-path $anydocCargoToml `
+        --config $cargoAboutConfig `
+        --locked `
+        --fail `
+        --output-file $OutputPath `
+        $cargoAboutTemplate
+    if ($LASTEXITCODE -ne 0) {
+        Fail "cargo-about failed to generate Rust third-party notices."
+    }
+
+    if (-not (Test-Path -LiteralPath $OutputPath -PathType Leaf) -or
+        (Get-Item -LiteralPath $OutputPath).Length -le 0) {
+        Fail "Rust third-party notice artifact was not created."
+    }
+
+    $noticeContent = Get-Content -LiteralPath $OutputPath -Raw
+    foreach ($requiredToken in @(
+        "anydoc 0.2.4",
+        "quick-xml 0.41.0",
+        "lopdf 0.45.0",
+        "zip 8.6.0",
+        "42bf1c5ecdde9eb0d96d6bd75a9e6698cf93b14c"
+    )) {
+        if ($noticeContent.IndexOf(
+                $requiredToken,
+                [System.StringComparison]::OrdinalIgnoreCase) -lt 0) {
+            Fail "Rust third-party notices are missing required dependency evidence: $requiredToken"
+        }
+    }
+
+    if ($noticeContent -match "(?im)^Source path:") {
+        Fail "Rust third-party notices must not include build-machine source paths."
+    }
+    foreach ($localPath in @($repoRoot, $env:USERPROFILE)) {
+        if (-not [string]::IsNullOrWhiteSpace($localPath) -and
+            $noticeContent.IndexOf(
+                $localPath,
+                [System.StringComparison]::OrdinalIgnoreCase) -ge 0) {
+            Fail "Rust third-party notices recorded a local build-machine path."
+        }
     }
 }
 
@@ -70,10 +164,13 @@ if ($LASTEXITCODE -ne 0 -or -not ($sdks -match "^8\.")) {
 foreach ($requiredPath in @(
     $appProject,
     $workerProject,
+    $anydocCargoToml,
     $readmePath,
     $licensePath,
     $noticesPath,
-    $licensesDirectory
+    $licensesDirectory,
+    $cargoAboutConfig,
+    $cargoAboutTemplate
 )) {
     if (-not (Test-Path -LiteralPath $requiredPath)) {
         Fail "Required packaging input is missing."
@@ -89,6 +186,21 @@ New-Item -ItemType Directory -Force -Path $appFolder | Out-Null
 Publish-Project $appProject $appFolder
 Publish-Project $workerProject $appFolder
 
+if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) {
+    Fail "cargo is required to build the pinned native worker for packaging."
+}
+& cargo build --manifest-path $anydocCargoToml --release --locked
+if ($LASTEXITCODE -ne 0) {
+    Fail "Anydoc worker cargo release build failed."
+}
+
+$anydocWorkerRelease = Join-Path $repoRoot "src\Zlet.FolderConverter.AnydocWorker\target\release\zlet-anydoc-worker.exe"
+if (-not (Test-Path -LiteralPath $anydocWorkerRelease -PathType Leaf)) {
+    Fail "Required packaging input is missing: zlet-anydoc-worker.exe."
+}
+Copy-Item -LiteralPath $anydocWorkerRelease `
+    -Destination (Join-Path $appFolder "zlet-anydoc-worker.exe") -Force
+
 Copy-Item -LiteralPath $readmePath `
     -Destination (Join-Path $appFolder "README_PORTABLE.txt") -Force
 Copy-Item -LiteralPath $licensePath `
@@ -100,12 +212,17 @@ New-Item -ItemType Directory -Force -Path $packagedLicenses | Out-Null
 Copy-Item -Path (Join-Path $licensesDirectory "*") `
     -Destination $packagedLicenses -Recurse -Force
 
+$generatedRustNotices = Join-Path $packagedLicenses "RUST_THIRD_PARTY_NOTICES.txt"
+Generate-RustNotices $generatedRustNotices
+
 $requiredOutputs = @(
     (Join-Path $appFolder "$executableName.exe"),
     (Join-Path $appFolder "Zlet.FolderConverter.OfficeWorker.exe"),
+    (Join-Path $appFolder "zlet-anydoc-worker.exe"),
     (Join-Path $appFolder "README_PORTABLE.txt"),
     (Join-Path $appFolder "LICENSE.txt"),
-    (Join-Path $appFolder "THIRD_PARTY_NOTICES.md")
+    (Join-Path $appFolder "THIRD_PARTY_NOTICES.md"),
+    $generatedRustNotices
 )
 foreach ($requiredOutput in $requiredOutputs) {
     if (-not (Test-Path -LiteralPath $requiredOutput -PathType Leaf)) {
@@ -151,7 +268,8 @@ if ($forbiddenFiles) {
 $ownedTextFiles = @(
     (Join-Path $appFolder "README_PORTABLE.txt"),
     (Join-Path $appFolder "THIRD_PARTY_NOTICES.md"),
-    (Join-Path $appFolder "licenses\README.md")
+    (Join-Path $appFolder "licenses\README.md"),
+    $generatedRustNotices
 )
 foreach ($textFile in $ownedTextFiles) {
     if (Test-Path -LiteralPath $textFile) {

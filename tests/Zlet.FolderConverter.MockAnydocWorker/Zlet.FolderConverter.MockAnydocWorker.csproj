@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>zlet-mock-anydoc-worker</AssemblyName>
+    <RootNamespace>Zlet.FolderConverter.MockAnydocWorker</RootNamespace>
+    <!-- Self-contained so the test does not need to ship a .runtimeconfig.json dance -->
+    <SelfContained>false</SelfContained>
+    <!-- Suppress warnings that are noise for a tiny test fixture -->
+    <NoWarn>CS8601</NoWarn>
+  </PropertyGroup>
+
+</Project>

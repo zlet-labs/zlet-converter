@@ -1,0 +1,17 @@
+﻿[package]
+name = "zlet-anydoc-worker"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+description = "Zlet native anydoc Markdown conversion worker with adaptive table rendering"
+license = "MIT"
+
+[dependencies]
+anydoc = { git = "https://github.com/firecrawl/anydoc.git", rev = "42bf1c5ecdde9eb0d96d6bd75a9e6698cf93b14c" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[profile.release]
+lto = "thin"
+strip = "symbols"
+opt-level = 3

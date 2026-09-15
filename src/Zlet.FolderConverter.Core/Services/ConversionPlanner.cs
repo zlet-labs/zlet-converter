@@ -63,27 +63,37 @@ public sealed class ConversionPlanner : IConversionPlanner
                 targetRootPath,
                 ruleSet.GetRule(file.Format)))
             .ToArray();
-        var used = operations.Where(operation => !operation.IsWorksheetOperation)
-            .Select(operation => operation.TargetPath).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var used = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         for (var index = 0; index < operations.Length; index++)
         {
             var operation = operations[index];
-            if (!operation.IsWorksheetOperation || string.IsNullOrEmpty(operation.TargetPath)) continue;
+            if (string.IsNullOrEmpty(operation.TargetPath)) continue;
             var path = operation.TargetPath;
             var suffix = 2;
             while (!used.Add(path))
-                path = Path.Combine(Path.GetDirectoryName(operation.TargetPath)!,
+            {
+                path = Path.Combine(
+                    Path.GetDirectoryName(operation.TargetPath)!,
                     WorksheetOutputNameBuilder.WithCollisionSuffix(Path.GetFileName(operation.TargetPath), suffix++));
+            }
             if (path == operation.TargetPath) continue;
             var conflict = File.Exists(path) || Directory.Exists(path);
             var status = operation.Status;
             var message = operation.Message;
             if (status == OperationStatus.Conflict && !conflict)
             {
-                status = operation.WorksheetIsEmpty ? OperationStatus.Skipped
-                    : operation.AdapterAvailable ? OperationStatus.Ready : OperationStatus.EngineUnavailable;
-                message = operation.WorksheetIsEmpty ? "worksheet_empty"
-                    : operation.AdapterAvailable ? "Готово к преобразованию." : "Преобразование недоступно.";
+                if (operation.IsWorksheetOperation)
+                {
+                    status = operation.WorksheetIsEmpty ? OperationStatus.Skipped
+                        : operation.AdapterAvailable ? OperationStatus.Ready : OperationStatus.EngineUnavailable;
+                    message = operation.WorksheetIsEmpty ? "worksheet_empty"
+                        : operation.AdapterAvailable ? "Готово к преобразованию." : "Преобразование недоступно.";
+                }
+                else
+                {
+                    status = operation.AdapterAvailable ? OperationStatus.Ready : OperationStatus.EngineUnavailable;
+                    message = operation.AdapterAvailable ? "Готово к преобразованию." : "Преобразование недоступно.";
+                }
             }
             operations[index] = operation with
             {
@@ -92,7 +102,7 @@ public sealed class ConversionPlanner : IConversionPlanner
                 Status = conflict ? OperationStatus.Conflict : status,
                 Message = conflict ? "Файл результата уже существует." : message,
                 DefaultSelected = !conflict && status == OperationStatus.Ready
-                    && operation.WorksheetVisibility == WorksheetVisibility.Visible
+                    && (!operation.IsWorksheetOperation || operation.WorksheetVisibility == WorksheetVisibility.Visible)
             };
         }
         return operations;

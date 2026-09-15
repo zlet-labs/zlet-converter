@@ -18,7 +18,7 @@ jobs:
   verify:
     name: Restore, build and test
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     env:
       DOTNET_NOLOGO: true
       DOTNET_CLI_TELEMETRY_OPTOUT: true
@@ -33,6 +33,11 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
+      - name: Build and test native worker
+        run: |
+          cargo test --manifest-path src/Zlet.FolderConverter.AnydocWorker/Cargo.toml --locked
+          cargo build --manifest-path src/Zlet.FolderConverter.AnydocWorker/Cargo.toml --release --locked
+
       - name: Restore
         run: dotnet restore FolderConverter.sln
 
@@ -41,3 +46,7 @@ jobs:
 
       - name: Test
         run: dotnet test FolderConverter.sln -c Release --no-build --logger "trx;LogFileName=test-results.trx"
+
+      - name: Verify portable package and Rust third-party notices
+        shell: powershell
+        run: powershell -ExecutionPolicy Bypass -File scripts/publish-portable.ps1

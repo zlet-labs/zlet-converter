@@ -93,10 +93,15 @@ public sealed class ResultZipPublisher
         foreach (var result in successful)
         {
             var sourcePath = Path.GetFullPath(result.Operation.TargetPath);
+            var allowEmptyCopy = result.Operation.Target == ConversionTarget.Copy
+                && result.Operation.SourceFormat is SourceFormat.Csv or SourceFormat.Tsv or SourceFormat.Txt or SourceFormat.Html
+                && (result.Operation.SourceSizeBytes == 0 || (File.Exists(result.Operation.SourcePath) && new FileInfo(result.Operation.SourcePath).Length == 0));
+            var allowEmptyMarkdown = result.Operation.Target == ConversionTarget.Markdown
+                && (result.Operation.SourceSizeBytes == 0 || (File.Exists(result.Operation.SourcePath) && new FileInfo(result.Operation.SourcePath).Length == 0));
+            var allowEmptyOutput = allowEmptyCopy || allowEmptyMarkdown;
+
             if (!File.Exists(sourcePath)
-                || (new FileInfo(sourcePath).Length == 0
-                    && !(result.Operation.Target == ConversionTarget.Copy
-                        && result.Operation.SourceFormat is SourceFormat.Csv or SourceFormat.Tsv))
+                || (new FileInfo(sourcePath).Length == 0 && !allowEmptyOutput)
                 || !sourcePath.StartsWith(
                     stagingRoot + Path.DirectorySeparatorChar,
                     StringComparison.OrdinalIgnoreCase)
@@ -113,6 +118,63 @@ public sealed class ResultZipPublisher
             }
 
             entries.Add(new ZipSourceEntry(sourcePath, entryName));
+
+            if (result.CompanionFiles is not null)
+            {
+                foreach (var file in result.CompanionFiles)
+                {
+                    var fileFullPath = Path.GetFullPath(file);
+                    if (!File.Exists(fileFullPath)
+                        || !fileFullPath.StartsWith(
+                            stagingRoot + Path.DirectorySeparatorChar,
+                            StringComparison.OrdinalIgnoreCase)
+                        || HasReparsePoint(fileFullPath))
+                    {
+                        throw new InvalidDataException("A companion asset output is unsafe or missing.");
+                    }
+
+                    var assetEntryName = Path.GetRelativePath(stagingRoot, fileFullPath)
+                        .Replace(Path.DirectorySeparatorChar, '/');
+                    if (!IsSafeEntryName(assetEntryName) || !names.Add(assetEntryName))
+                    {
+                        throw new InvalidDataException("ZIP asset entry path is unsafe or duplicated.");
+                    }
+
+                    entries.Add(new ZipSourceEntry(fileFullPath, assetEntryName));
+                }
+            }
+            else if (!string.IsNullOrWhiteSpace(result.CompanionDirectoryPath) && Directory.Exists(result.CompanionDirectoryPath))
+            {
+                var companionDir = Path.GetFullPath(result.CompanionDirectoryPath);
+                if (!companionDir.StartsWith(
+                        stagingRoot + Path.DirectorySeparatorChar,
+                        StringComparison.OrdinalIgnoreCase)
+                    || HasReparsePoint(companionDir))
+                {
+                    throw new InvalidDataException("A companion asset output is unsafe.");
+                }
+
+                foreach (var file in Directory.EnumerateFiles(companionDir, "*", SearchOption.AllDirectories))
+                {
+                    var fileFullPath = Path.GetFullPath(file);
+                    if (!fileFullPath.StartsWith(
+                            stagingRoot + Path.DirectorySeparatorChar,
+                            StringComparison.OrdinalIgnoreCase)
+                        || HasReparsePoint(fileFullPath))
+                    {
+                        throw new InvalidDataException("A companion asset output is unsafe.");
+                    }
+
+                    var assetEntryName = Path.GetRelativePath(stagingRoot, fileFullPath)
+                        .Replace(Path.DirectorySeparatorChar, '/');
+                    if (!IsSafeEntryName(assetEntryName) || !names.Add(assetEntryName))
+                    {
+                        throw new InvalidDataException("ZIP asset entry path is unsafe or duplicated.");
+                    }
+
+                    entries.Add(new ZipSourceEntry(fileFullPath, assetEntryName));
+                }
+            }
         }
 
         return entries;

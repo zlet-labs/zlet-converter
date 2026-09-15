@@ -75,6 +75,17 @@ if (-not (Test-Path -LiteralPath $sourceDirectory -PathType Container)) {
     Fail "Portable source directory was not created."
 }
 
+$requiredBinaries = @(
+    (Join-Path $sourceDirectory "$executableName.exe"),
+    (Join-Path $sourceDirectory "Zlet.FolderConverter.OfficeWorker.exe"),
+    (Join-Path $sourceDirectory "zlet-anydoc-worker.exe")
+)
+foreach ($binary in $requiredBinaries) {
+    if (-not (Test-Path -LiteralPath $binary -PathType Leaf)) {
+        Fail "Installer packaging validation failed: required binary is missing from staging directory: $binary"
+    }
+}
+
 if (Test-Path -LiteralPath $installerDirectory) {
     Remove-Item -LiteralPath $installerDirectory -Recurse -Force
 }
