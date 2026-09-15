@@ -74,10 +74,13 @@ function Ensure-CargoAbout {
         Fail "cargo is required to generate Rust third-party notices."
     }
 
-    $versionOutput = & cargo about --version 2>$null
-    if ($LASTEXITCODE -eq 0 -and
-        ($versionOutput -join " ") -match "cargo-about\s+$([regex]::Escape($cargoAboutVersion))(\s|$)") {
-        return
+    $cargoAbout = Get-Command cargo-about -ErrorAction SilentlyContinue
+    if ($cargoAbout) {
+        $versionOutput = & $cargoAbout.Source --version
+        if ($LASTEXITCODE -eq 0 -and
+            ($versionOutput -join " ") -match "cargo-about\s+$([regex]::Escape($cargoAboutVersion))(\s|$)") {
+            return
+        }
     }
 
     & cargo install cargo-about `
@@ -88,7 +91,12 @@ function Ensure-CargoAbout {
         Fail "Unable to install pinned cargo-about $cargoAboutVersion."
     }
 
-    $versionOutput = & cargo about --version 2>$null
+    $cargoAbout = Get-Command cargo-about -ErrorAction SilentlyContinue
+    if (-not $cargoAbout) {
+        Fail "Pinned cargo-about $cargoAboutVersion is not available after installation."
+    }
+
+    $versionOutput = & $cargoAbout.Source --version
     if ($LASTEXITCODE -ne 0 -or
         ($versionOutput -join " ") -notmatch "cargo-about\s+$([regex]::Escape($cargoAboutVersion))(\s|$)") {
         Fail "Pinned cargo-about $cargoAboutVersion is not available after installation."
