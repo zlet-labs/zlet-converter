@@ -3,13 +3,14 @@ mod renderer;
 
 use anydoc::Format;
 use protocol::{HandshakeResponse, WorkerRequest, WorkerResponse};
-use std::fs;
-use std::io::{self, BufRead, Write};
+use std::fs::{self, File};
+use std::io::{self, BufRead, Read, Write};
 use std::path::Path;
 
 const PROTOCOL_VERSION: &str = "1.0";
 const ANYDOC_VERSION: &str = "0.2.4";
 const ANYDOC_REVISION: &str = "42bf1c5ecdde9eb0d96d6bd75a9e6698cf93b14c";
+const MAX_INPUT_BYTES: u64 = 512 * 1024 * 1024;
 
 fn resolve_format(ext_or_fmt: Option<&str>, path: &Path, bytes: &[u8]) -> Option<Format> {
     if let Some(fmt_str) = ext_or_fmt {
@@ -47,6 +48,29 @@ fn map_convert_error(err: anydoc::ConvertError) -> (&'static str, &'static str) 
     }
 }
 
+fn exceeds_input_limit(len: u64) -> bool {
+    len > MAX_INPUT_BYTES
+}
+
+fn read_input_bounded(path: &Path) -> io::Result<Result<Vec<u8>, u64>> {
+    let metadata = fs::metadata(path)?;
+    if exceeds_input_limit(metadata.len()) {
+        return Ok(Err(metadata.len()));
+    }
+
+    let file = File::open(path)?;
+    let initial_capacity = usize::try_from(metadata.len().min(8 * 1024 * 1024)).unwrap_or(0);
+    let mut bytes = Vec::with_capacity(initial_capacity);
+    let mut limited = file.take(MAX_INPUT_BYTES + 1);
+    limited.read_to_end(&mut bytes)?;
+
+    if exceeds_input_limit(bytes.len() as u64) {
+        Ok(Err(bytes.len() as u64))
+    } else {
+        Ok(Ok(bytes))
+    }
+}
+
 fn process_convert(req: &WorkerRequest) -> WorkerResponse {
     let source_path = Path::new(&req.source_path);
     let output_path = Path::new(&req.output_path);
@@ -61,8 +85,17 @@ fn process_convert(req: &WorkerRequest) -> WorkerResponse {
         };
     }
 
-    let bytes = match fs::read(source_path) {
-        Ok(b) => b,
+    let bytes = match read_input_bounded(source_path) {
+        Ok(Ok(b)) => b,
+        Ok(Err(_)) => {
+            return WorkerResponse {
+                id: req.id.clone(),
+                success: false,
+                error_code: "resource_limit".into(),
+                error_message: "Input file exceeds the 512 MiB worker safety limit.".into(),
+                has_extracted_text: false,
+            };
+        }
         Err(e) => {
             return WorkerResponse {
                 id: req.id.clone(),
@@ -287,5 +320,17 @@ fn main() {
         let json = serde_json::to_string(&res).unwrap();
         println!("{}", json);
         let _ = io::stdout().flush();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn input_size_limit_accepts_boundary_and_rejects_larger_files() {
+        assert_eq!(MAX_INPUT_BYTES, 512 * 1024 * 1024);
+        assert!(!exceeds_input_limit(MAX_INPUT_BYTES));
+        assert!(exceeds_input_limit(MAX_INPUT_BYTES + 1));
     }
 }
