@@ -6,33 +6,50 @@
 
 ### Short description
 
-**Zlet Converter is a local Windows utility for batch-converting legacy Microsoft Office files, exporting Excel worksheets, safely copying compatible documents and media, and preparing local file collections without cloud uploads.**
+**Zlet Converter is a local-first Windows utility for converting documents into high-quality Markdown, modernizing supported legacy Microsoft Office files, exporting Excel worksheets, and safely processing batches without cloud uploads.**
 
 ### Repository / catalog description
 
-Zlet Converter helps process many files in folders and subfolders while keeping the work local on the user's PC. v0.0.3 converts supported legacy Office formats such as DOC, XLS and PPT using installed Microsoft Office applications, exports XLS/XLSX worksheets to UTF-8 CSV or TSV, safely copies supported modern files unchanged, preserves relative folder structure, and avoids silently overwriting existing results.
+Zlet Converter helps process many files in folders and subfolders while keeping the work local on the user's PC. v0.1.0 introduces the primary product route **Documents → high-quality Markdown** for supported modern documents through a bundled local native worker, while retaining legacy Office modernization, Excel worksheet CSV/TSV export, safe-copy operations, relative folder structure, Folder/ZIP output, conflict protection and human-readable reporting.
 
-The app is designed for simple self-serve use: choose a folder, review the planned actions, filter or sort Preview, select what to process, choose folder or ZIP output, run the batch, and inspect the result summary and persistent TXT report. No account, backend or cloud upload is required.
+The app is designed for simple self-serve use: choose a folder, review planned actions, filter or sort Preview, select what to process, choose Folder or ZIP output, run the batch, and inspect the result summary and persistent TXT report. No account, backend, cloud conversion service or LLM API is required.
 
-### Gemini Notebook use case
+### Markdown in v0.1.0
 
-One practical use case is preparing local document collections for **Gemini Notebook** and similar document workflows. Zlet Converter can convert DOC → DOCX and PPT → PPTX, convert JSON → TXT/Markdown, export Excel worksheets to CSV/TSV, and safely copy supported PDFs, Office Open XML files, EPUBs and images without changing their contents.
+Primary packaged Markdown targets are DOCX, XLSX, PPTX, straightforward searchable PDF and TXT. Simple structures render as GFM; complex tables may use sanitized HTML inside Markdown when pure GFM would lose structure.
 
-Zlet Converter does not connect to Gemini Notebook and does not upload files to it. Conversion remains local; the user decides whether and when to upload the results. Destination-service format support can change, so CSV/TSV or other outputs do not imply direct integration or guaranteed acceptance.
+Image-only/no-extractable-text scanned PDF produces an explicit specialist-required diagnostic rather than claiming OCR. Partially searchable/mixed OCR PDFs remain provisional and may require manual review.
 
-Gemini Notebook source support: https://support.google.com/gemininotebook/answer/16215270?co=GENIE.Platform%3DDesktop&hl=en
+Direct legacy DOC/XLS/PPT → Markdown paths are implemented but remain packaged-acceptance provisional until public reproducible legacy fixtures are available. Companion asset export is implemented where the parser exposes assets, while end-to-end packaged Folder/ZIP/Stop asset preservation remains provisional until a public reproducible asset-bearing fixture is included in acceptance.
 
-### Key points in v0.0.3
+HTML → Markdown is intentionally not enabled in v0.1.0; there is no hidden cloud/Python/Docling fallback.
 
-- Windows x64 desktop utility.
-- Local processing only; files are not uploaded.
-- Russian and English UI in the same package.
+### Existing routes retained
+
 - DOC → DOCX through installed Microsoft Word.
 - XLS → XLSX through installed Microsoft Excel.
-- XLS/XLSX → one UTF-8 CSV or TSV per worksheet through installed Microsoft Excel.
 - PPT → PPTX through installed Microsoft PowerPoint.
-- Safe unchanged copy for DOCX/XLSX/PPTX, PDF, CSV, TSV, EPUB and supported images.
+- XLS/XLSX → one UTF-8 CSV or TSV per eligible worksheet through installed Microsoft Excel.
+- Safe unchanged copy for supported already-compatible documents/media.
 - JSON → TXT or Markdown conversion.
+
+Microsoft Office is required only for the separate Office-dependent routes. Bundled modern Document → Markdown routes do not require Microsoft Office.
+
+### Key points in v0.1.0
+
+- Windows x64 desktop utility.
+- Local processing only; documents are not uploaded for conversion.
+- Russian and English UI in the same package, with in-app language switching that preserves current Preview/results.
+- Documents → high-quality Markdown as the primary route.
+- Bundled local `zlet-anydoc-worker.exe` with pinned anydoc dependency/revision.
+- DOCX/XLSX/PPTX/searchable PDF/TXT Markdown routes.
+- Explicit image-only scanned-PDF specialist-required diagnostics; no bundled OCR claim.
+- Adaptive Markdown rendering with structure-preserving HTML fallback for complex tables where required.
+- Companion asset export implemented but packaged preservation remains provisional pending a public asset-bearing fixture.
+- Direct legacy DOC/XLS/PPT → Markdown remains provisional pending reproducible packaged evidence.
+- Legacy DOC/XLS/PPT modernization through installed Microsoft Office remains available separately.
+- XLS/XLSX per-worksheet UTF-8 CSV/TSV export remains available through installed Excel.
+- Safe unchanged copy for supported compatible files.
 - Folder and subfolder scanning with relative structure preservation.
 - Preview filtering by format, visible clear-filter action, sortable columns and 1-based visible row numbering.
 - Selection remains independent from filtering/sorting and controls the real execution set.
@@ -41,61 +58,78 @@ Gemini Notebook source support: https://support.google.com/gemininotebook/answer
 - Conflict protection: existing result files/directories are not silently overwritten.
 - Per-file status, progress, source size and elapsed time.
 - Safe batch cancellation that does not terminate unrelated user Office processes.
-- PRE-ALPHA product maturity; complex, corrupted, password-protected or unsupported documents may fail.
+- PRE-ALPHA product maturity; complex, corrupted, password-protected or unsupported documents may fail explicitly.
 
 ### Current release classification
 
-`v0.0.3` is published as a normal GitHub Release (`prerelease=false`). **PRE-ALPHA** describes product maturity only.
+`v0.1.0` is prepared as a normal GitHub Release (`prerelease=false`). **PRE-ALPHA** describes product maturity only. Release publication and packaged Windows acceptance are separate gates; publication alone is not acceptance evidence.
 
 ### One-line GitHub About text
 
-`Local Windows batch file converter with Office conversion, Excel sheet export and safe local file processing. No cloud uploads.`
+`Local-first Windows document converter: high-quality Markdown, legacy Office modernization and batch processing. No cloud uploads.`
 
 ## Русский
 
 ### Короткое описание
 
-**Zlet Converter — локальная Windows-утилита для пакетного преобразования старых форматов Microsoft Office, экспорта листов Excel, безопасного копирования совместимых документов и медиа и подготовки локальных коллекций файлов без загрузки в облако.**
+**Zlet Converter — local-first Windows-утилита для преобразования документов в качественный Markdown, модернизации поддерживаемых legacy Microsoft Office-файлов, экспорта листов Excel и безопасной пакетной обработки без загрузки документов в облако.**
 
 ### Описание продукта
 
-Zlet Converter помогает обрабатывать сразу много файлов в папках и подпапках, оставляя всю работу на компьютере пользователя. В v0.0.3 утилита преобразует DOC, XLS и PPT через установленные приложения Microsoft Office, экспортирует листы XLS/XLSX в UTF-8 CSV или TSV, безопасно копирует поддерживаемые современные файлы без изменений, сохраняет относительную структуру каталогов и не перезаписывает существующие результаты молча.
+Zlet Converter помогает обрабатывать сразу много файлов в папках и подпапках, оставляя работу на компьютере пользователя. v0.1.0 вводит основной продуктовый маршрут **Documents → high-quality Markdown** для поддерживаемых современных документов через bundled local native worker и сохраняет legacy Office modernization, Excel CSV/TSV export, safe-copy операции, относительную структуру каталогов, Folder/ZIP output, conflict protection и человекочитаемый отчёт.
 
-Основной сценарий простой: выбрать папку, посмотреть план операций, отфильтровать или отсортировать Preview, отметить нужные файлы, выбрать вывод в папку или ZIP, запустить пакетную обработку и проверить итоговую сводку и постоянный TXT-отчёт. Аккаунт, backend и загрузка документов в облако не требуются.
+Основной сценарий простой: выбрать папку, посмотреть план операций, отфильтровать или отсортировать Preview, отметить нужные файлы, выбрать Folder или ZIP output, запустить batch и проверить итоговую сводку и постоянный TXT-отчёт. Аккаунт, backend, cloud conversion service и LLM API не требуются.
 
-### Сценарий Gemini Notebook
+### Markdown в v0.1.0
 
-Один из практичных сценариев — подготовка локальных коллекций документов для **Gemini Notebook** и похожих document workflows. Zlet Converter может подготовить DOC → DOCX и PPT → PPTX, преобразовать JSON → TXT/Markdown, экспортировать листы Excel в CSV/TSV и безопасно скопировать поддерживаемые PDF, Office Open XML, EPUB и изображения без изменения содержимого.
+Основные packaged Markdown targets: DOCX, XLSX, PPTX, обычный searchable PDF и TXT. Простые структуры выводятся как GFM; для сложных таблиц допускается sanitized HTML внутри Markdown, когда чистый GFM потерял бы структуру.
 
-Zlet Converter не подключается к Gemini Notebook и не загружает туда файлы. Преобразование остаётся локальным; пользователь сам решает, загружать ли результат и когда. Требования целевого сервиса могут меняться, поэтому наличие CSV/TSV или других результатов не означает прямую интеграцию или гарантированный приём.
+Image-only/no-extractable-text scanned PDF получает явную specialist-required диагностику без ложного заявления OCR. Partially searchable/mixed OCR PDF остаются provisional и могут требовать ручной проверки.
 
-Поддерживаемые источники Gemini Notebook: https://support.google.com/gemininotebook/answer/16215270?co=GENIE.Platform%3DDesktop&hl=ru
+Direct legacy DOC/XLS/PPT → Markdown routes реализованы, но packaged acceptance остаётся provisional до появления публичных воспроизводимых legacy fixtures. Companion asset export реализован там, где parser предоставляет assets, а end-to-end packaged preservation для Folder/ZIP/Stop остаётся provisional до появления публичной asset-bearing fixture в acceptance.
 
-### Основные возможности v0.0.3
+HTML → Markdown намеренно не включён в v0.1.0; скрытого cloud/Python/Docling fallback нет.
 
-- Windows x64 desktop-утилита.
-- Полностью локальная обработка; файлы никуда не загружаются.
-- Русский и английский интерфейс в одном пакете.
+### Существующие маршруты сохранены
+
 - DOC → DOCX через установленный Microsoft Word.
 - XLS → XLSX через установленный Microsoft Excel.
-- XLS/XLSX → отдельный UTF-8 CSV или TSV для каждого листа через установленный Microsoft Excel.
 - PPT → PPTX через установленный Microsoft PowerPoint.
-- Безопасное копирование DOCX/XLSX/PPTX, PDF, CSV, TSV, EPUB и поддерживаемых изображений без изменений.
+- XLS/XLSX → отдельный UTF-8 CSV или TSV для каждого eligible worksheet через установленный Microsoft Excel.
+- Безопасное копирование поддерживаемых уже совместимых документов/медиа без изменений.
 - JSON → TXT или Markdown.
+
+Microsoft Office требуется только отдельным Office-dependent routes. Bundled современные Document → Markdown routes не требуют Microsoft Office.
+
+### Основные возможности v0.1.0
+
+- Windows x64 desktop-утилита.
+- Полностью локальная обработка; документы не загружаются в облако для конвертации.
+- Русский и английский интерфейс в одном пакете с переключением языка без потери текущего Preview/результатов.
+- Documents → high-quality Markdown как основной маршрут.
+- Bundled local `zlet-anydoc-worker.exe` с pinned anydoc dependency/revision.
+- DOCX/XLSX/PPTX/searchable PDF/TXT → Markdown.
+- Явная specialist-required диагностика image-only scanned PDF; bundled OCR не заявляется.
+- Adaptive Markdown rendering с structure-preserving HTML fallback для сложных таблиц при необходимости.
+- Companion asset export реализован, но packaged preservation остаётся provisional до публичной asset-bearing fixture.
+- Direct legacy DOC/XLS/PPT → Markdown остаётся provisional до воспроизводимого packaged evidence.
+- Legacy DOC/XLS/PPT modernization через установленный Microsoft Office сохраняется отдельным маршрутом.
+- XLS/XLSX → per-worksheet UTF-8 CSV/TSV через установленный Excel сохраняется.
+- Безопасное копирование поддерживаемых совместимых файлов без изменений.
 - Сканирование папок и подпапок с сохранением относительной структуры.
 - Фильтрация Preview по форматам, видимое действие очистки фильтра, сортировка колонок и нумерация видимых строк с 1.
 - Фильтр/сортировка не меняют checkbox selection и реальный execution set.
-- Вывод в папку или ZIP.
+- Folder или ZIP output.
 - Постоянный `ZletConverter-report.txt` с относительными путями, счётчиками, статистикой листов, статусами и безопасной диагностикой.
 - Защита от конфликтов: существующие файлы/каталоги результата не перезаписываются молча.
 - Статус, прогресс, размер исходника и время выполнения по каждому файлу.
 - Безопасная остановка batch без завершения посторонних пользовательских процессов Office.
-- Зрелость PRE-ALPHA: сложные, повреждённые, защищённые паролем или неподдерживаемые документы могут не преобразоваться.
+- Зрелость PRE-ALPHA: сложные, повреждённые, password-protected или неподдерживаемые документы могут завершиться явной ошибкой/ограничением.
 
 ### Классификация текущего релиза
 
-`v0.0.3` опубликован как обычный GitHub Release (`prerelease=false`). **PRE-ALPHA** обозначает только зрелость продукта.
+`v0.1.0` готовится как обычный GitHub Release (`prerelease=false`). **PRE-ALPHA** обозначает только зрелость продукта. Публикация релиза и packaged Windows acceptance — разные gates; сама публикация не является acceptance evidence.
 
 ### Короткое описание для GitHub About
 
-`Локальный Windows batch-конвертер с Office-конвертацией, экспортом листов Excel и безопасной локальной обработкой файлов. Без облака.`
+`Local-first Windows document converter: качественный Markdown, legacy Office modernization и batch processing. Без облачной загрузки документов.`
