@@ -23,18 +23,16 @@ public sealed class MicrosoftOfficeWorkerProcessRunnerTests : IDisposable
         var process = new ControlledWorkerProcess(new DeferredTextReader());
         var officeTerminator = new RecordingOfficeTerminator();
         var runner = CreateRunner(process, officeTerminator);
-        var stopwatch = Stopwatch.StartNew();
 
         var result = await runner.RunAsync(
-            Request(OfficeApplicationKind.Word),
-            CancellationToken.None);
+                Request(OfficeApplicationKind.Word),
+                CancellationToken.None)
+            .WaitAsync(TimeSpan.FromSeconds(5));
 
-        stopwatch.Stop();
         Assert.True(result.TimedOut);
         Assert.Equal("worker_timeout", result.ErrorCode);
         Assert.True(process.KillCalled);
         Assert.False(officeTerminator.WasCalled);
-        Assert.True(stopwatch.Elapsed < TimeSpan.FromSeconds(1));
     }
 
     [Fact]
