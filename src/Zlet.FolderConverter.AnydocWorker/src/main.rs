@@ -11,6 +11,10 @@ const PROTOCOL_VERSION: &str = "1.0";
 const ANYDOC_VERSION: &str = "0.2.4";
 const ANYDOC_REVISION: &str = "42bf1c5ecdde9eb0d96d6bd75a9e6698cf93b14c";
 const MAX_INPUT_BYTES: u64 = 512 * 1024 * 1024;
+const CUSTOM_MARKER_ITEM_OPEN: &str =
+    "<li style=\"list-style-type:none\"><span class=\"zlet-list-marker\">";
+const CUSTOM_MARKER_ITEM_SAFE_OPEN: &str =
+    "<div role=\"listitem\" class=\"zlet-custom-list-item\"><span class=\"zlet-list-marker\">";
 
 fn resolve_format(ext_or_fmt: Option<&str>, path: &Path, bytes: &[u8]) -> Option<Format> {
     if let Some(fmt_str) = ext_or_fmt {
@@ -69,6 +73,56 @@ fn read_input_bounded(path: &Path) -> io::Result<Result<Vec<u8>, u64>> {
     } else {
         Ok(Ok(bytes))
     }
+}
+
+fn find_matching_li_close(markup: &str, body_start: usize) -> Option<usize> {
+    let mut depth = 1usize;
+    let mut cursor = body_start;
+
+    loop {
+        let next_open = markup[cursor..].find("<li").map(|offset| cursor + offset);
+        let next_close = markup[cursor..].find("</li>").map(|offset| cursor + offset)?;
+
+        if let Some(open) = next_open {
+            if open < next_close {
+                depth += 1;
+                cursor = open + 3;
+                continue;
+            }
+        }
+
+        depth -= 1;
+        if depth == 0 {
+            return Some(next_close);
+        }
+        cursor = next_close + "</li>".len();
+    }
+}
+
+fn stabilize_custom_list_markers(markdown: &str) -> String {
+    let mut out = String::with_capacity(markdown.len());
+    let mut cursor = 0usize;
+
+    while let Some(relative_start) = markdown[cursor..].find(CUSTOM_MARKER_ITEM_OPEN) {
+        let start = cursor + relative_start;
+        out.push_str(&markdown[cursor..start]);
+
+        let body_start = start + CUSTOM_MARKER_ITEM_OPEN.len();
+        let Some(close_start) = find_matching_li_close(markdown, body_start) else {
+            out.push_str(&markdown[start..]);
+            return out;
+        };
+
+        out.push_str(CUSTOM_MARKER_ITEM_SAFE_OPEN);
+        out.push_str(&stabilize_custom_list_markers(
+            &markdown[body_start..close_start],
+        ));
+        out.push_str("</div>");
+        cursor = close_start + "</li>".len();
+    }
+
+    out.push_str(&markdown[cursor..]);
+    out
 }
 
 fn process_convert(req: &WorkerRequest) -> WorkerResponse {
@@ -199,8 +253,12 @@ fn process_convert(req: &WorkerRequest) -> WorkerResponse {
         }
     };
 
-    // Render using adaptive hybrid table renderer
-    let markdown = renderer::render_document_to_markdown(&doc, &asset_map);
+    // Render using adaptive hybrid table renderer, then remove sanitizer-sensitive
+    // CSS from custom list markers before the Markdown is written.
+    let markdown = stabilize_custom_list_markers(&renderer::render_document_to_markdown(
+        &doc,
+        &asset_map,
+    ));
 
     if let Err(e) = fs::write(output_path, &markdown) {
         return WorkerResponse {
@@ -332,5 +390,25 @@ mod tests {
         assert_eq!(MAX_INPUT_BYTES, 512 * 1024 * 1024);
         assert!(!exceeds_input_limit(MAX_INPUT_BYTES));
         assert!(exceeds_input_limit(MAX_INPUT_BYTES + 1));
+    }
+
+    #[test]
+    fn custom_list_markers_do_not_depend_on_inline_css() {
+        let rendered = concat!(
+            "<ol start=\"3\">",
+            "<li style=\"list-style-type:none\"><span class=\"zlet-list-marker\">",
+            "3-a) &lt;unsafe&gt;</span> Custom item<ol><li>Nested</li></ol></li>",
+            "<li>Regular item</li>",
+            "</ol>"
+        );
+
+        let stabilized = stabilize_custom_list_markers(rendered);
+
+        assert!(!stabilized.contains("list-style-type:none"));
+        assert!(stabilized.contains(
+            "<div role=\"listitem\" class=\"zlet-custom-list-item\"><span class=\"zlet-list-marker\">3-a) &lt;unsafe&gt;</span> Custom item<ol><li>Nested</li></ol></div>"
+        ));
+        assert!(stabilized.contains("<li>Regular item</li>"));
+        assert!(!stabilized.contains("<unsafe>"));
     }
 }
