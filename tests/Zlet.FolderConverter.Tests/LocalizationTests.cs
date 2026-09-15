@@ -516,6 +516,36 @@ public sealed class LocalizationTests : IDisposable
     }
 
     [Fact]
+    public void Anydoc_error_codes_and_messages_localize_without_russian_fallback_in_english()
+    {
+        var localization = LocalizationService.CreateStandalone(AppLanguage.English);
+        var testCases = new (string ErrorCode, string RuMessage, string ExpectedEn)[]
+        {
+            ("unsupported_format", "Формат документа не поддерживается для преобразования в Markdown.", "Document format is not supported for Markdown conversion."),
+            ("source_not_found", "Исходный документ не найден.", "Source document was not found."),
+            ("write_error", "Не удалось записать файл результата Markdown.", "Failed to write Markdown result file."),
+            ("asset_export_error", "Не удалось извлечь встроенные изображения документа.", "Failed to export embedded document assets."),
+            ("read_error", "Не удалось прочитать исходный документ.", "Failed to read document contents."),
+            ("conversion_failed", "Не удалось преобразовать документ в Markdown.", "Failed to convert document to Markdown."),
+            ("invalid_request", "Ошибка протокола взаимодействия с компонентом Markdown.", "Invalid response from Markdown worker process."),
+            ("document_encrypted", "Документ зашифрован или защищен паролем.", "The document is password-protected or encrypted."),
+            ("resource_limit", "Документ превысил допустимые лимиты ресурсов при обработке.", "Resource limit exceeded while processing document."),
+            ("malformed_document", "Структура документа повреждена или некорректна.", "Document structure is corrupted or invalid.")
+        };
+
+        foreach (var (code, ruMessage, expectedEn) in testCases)
+        {
+            var localizedByCode = OperationMessageLocalizer.Localize(
+                OperationStatus.Failed, ConversionTarget.Markdown, null, code, localization);
+            Assert.Equal(expectedEn, localizedByCode);
+
+            var localizedByMsg = OperationMessageLocalizer.Localize(
+                OperationStatus.Failed, ConversionTarget.Markdown, ruMessage, code, localization);
+            Assert.Equal(expectedEn, localizedByMsg);
+        }
+    }
+
+    [Fact]
     public void Invalid_settings_destination_returns_failure_without_partial_file()
     {
         var blocker = Path.Combine(_root, "blocker"); File.WriteAllText(blocker, "not a directory");

@@ -119,7 +119,31 @@ public sealed class ResultZipPublisher
 
             entries.Add(new ZipSourceEntry(sourcePath, entryName));
 
-            if (!string.IsNullOrWhiteSpace(result.CompanionDirectoryPath) && Directory.Exists(result.CompanionDirectoryPath))
+            if (result.CompanionFiles is not null)
+            {
+                foreach (var file in result.CompanionFiles)
+                {
+                    var fileFullPath = Path.GetFullPath(file);
+                    if (!File.Exists(fileFullPath)
+                        || !fileFullPath.StartsWith(
+                            stagingRoot + Path.DirectorySeparatorChar,
+                            StringComparison.OrdinalIgnoreCase)
+                        || HasReparsePoint(fileFullPath))
+                    {
+                        throw new InvalidDataException("A companion asset output is unsafe or missing.");
+                    }
+
+                    var assetEntryName = Path.GetRelativePath(stagingRoot, fileFullPath)
+                        .Replace(Path.DirectorySeparatorChar, '/');
+                    if (!IsSafeEntryName(assetEntryName) || !names.Add(assetEntryName))
+                    {
+                        throw new InvalidDataException("ZIP asset entry path is unsafe or duplicated.");
+                    }
+
+                    entries.Add(new ZipSourceEntry(fileFullPath, assetEntryName));
+                }
+            }
+            else if (!string.IsNullOrWhiteSpace(result.CompanionDirectoryPath) && Directory.Exists(result.CompanionDirectoryPath))
             {
                 var companionDir = Path.GetFullPath(result.CompanionDirectoryPath);
                 if (!companionDir.StartsWith(

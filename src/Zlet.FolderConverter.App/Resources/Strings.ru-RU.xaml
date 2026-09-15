@@ -140,4 +140,7 @@
   <sys:String x:Key="AnydocWorkerMissingResponse">Процесс Markdown завершился без ответа.</sys:String>
   <sys:String x:Key="TextEncodingUnsupported">Кодировка текстового файла не поддерживается.</sys:String>
   <sys:String x:Key="CompanionAssetsInvalid">Формат ресурсов результата не прошёл проверку.</sys:String>
+  <sys:String x:Key="DocumentUnsupportedFormat">Формат документа не поддерживается для преобразования в Markdown.</sys:String>
+  <sys:String x:Key="DocumentSourceNotFound">Исходный документ не найден.</sys:String>
+  <sys:String x:Key="DocumentWriteError">Не удалось записать файл результата Markdown.</sys:String>
 </ResourceDictionary>

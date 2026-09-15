@@ -582,6 +582,97 @@ public sealed class AnydocMarkdownConversionAdapterTests : IDisposable
         Assert.Contains("empty.md", entryNames);
     }
 
+    [Fact]
+    public async Task ResultZipPublisher_only_packages_specific_companion_files_when_companion_files_list_provided()
+    {
+        var targetDir = Path.Combine(_rootPath, "_converted_specific_assets");
+        Directory.CreateDirectory(targetDir);
+        var targetPath = Path.Combine(targetDir, "doc.md");
+        await File.WriteAllTextAsync(targetPath, "# Document with specific assets");
+
+        var companionDir = Path.Combine(targetDir, "doc_assets");
+        Directory.CreateDirectory(companionDir);
+        var ownedAssetPath = Path.Combine(companionDir, "owned.png");
+        var foreignAssetPath = Path.Combine(companionDir, "foreign.png");
+        await File.WriteAllTextAsync(ownedAssetPath, "owned-bytes");
+        await File.WriteAllTextAsync(foreignAssetPath, "foreign-bytes");
+
+        var sourcePath = Path.Combine(_rootPath, "source_specific.txt");
+        await File.WriteAllTextAsync(sourcePath, "source");
+
+        var operation = new PlannedOperation(
+            sourcePath,
+            "source_specific.txt",
+            SourceFormat.Txt,
+            ConversionTarget.Markdown,
+            ".md",
+            targetPath,
+            true,
+            OperationStatus.Ready,
+            "ready",
+            targetDir);
+
+        var convResult = new ConversionResult(
+            operation,
+            OperationStatus.Succeeded,
+            "success",
+            CompanionDirectoryPath: companionDir,
+            CompanionFiles: new[] { ownedAssetPath });
+
+        var summary = new ConversionSummary(
+            Succeeded: 1,
+            Conflicts: 0,
+            Failed: 0,
+            Skipped: 0,
+            EngineUnavailable: 0,
+            Unsupported: 0,
+            Results: new[] { convResult });
+
+        var zipPath = Path.Combine(_rootPath, "specific_assets.zip");
+        var publisher = new ResultZipPublisher();
+        var pubResult = await publisher.PublishAsync(targetDir, zipPath, summary, CancellationToken.None);
+
+        Assert.True(pubResult.Created);
+        using var archive = System.IO.Compression.ZipFile.OpenRead(zipPath);
+        var entryNames = archive.Entries.Select(e => e.FullName).ToList();
+        Assert.Contains("doc.md", entryNames);
+        Assert.Contains("doc_assets/owned.png", entryNames);
+        Assert.DoesNotContain("doc_assets/foreign.png", entryNames);
+    }
+
+    [Fact]
+    public async Task SafeFileOperationExecutor_captures_promoted_companion_files_and_result_retains_them()
+    {
+        var sourcePath = Path.Combine(_rootPath, "doc_with_assets.docx");
+        await File.WriteAllTextAsync(sourcePath, "dummy docx content", Encoding.UTF8);
+        var operation = CreateOperation(sourcePath, "doc_with_assets.md", SourceFormat.Docx);
+
+        var mockRunner = new FakeAnydocWorkerRunner(async req =>
+        {
+            await File.WriteAllTextAsync(req.OutputPath, "# Doc with assets\n\n![img](doc_with_assets_assets/image-001.png)\n", Encoding.UTF8);
+            var assetDir = Path.Combine(Path.GetDirectoryName(req.OutputPath)!, req.AssetDir!);
+            Directory.CreateDirectory(assetDir);
+            await File.WriteAllBytesAsync(Path.Combine(assetDir, "image-001.png"), new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A });
+            return new AnydocWorkerExecutionResult(true);
+        });
+
+        var adapter = new AnydocMarkdownConversionAdapter(mockRunner, new OutputResultValidator());
+        var result = await adapter.ConvertAsync(operation, CancellationToken.None);
+
+        Assert.Equal(OperationStatus.Succeeded, result.Status);
+        Assert.NotNull(result.CompanionDirectoryPath);
+        Assert.True(Directory.Exists(result.CompanionDirectoryPath));
+        Assert.NotNull(result.CompanionFiles);
+        Assert.Single(result.CompanionFiles);
+        Assert.True(File.Exists(result.CompanionFiles[0]));
+        Assert.EndsWith("image-001.png", result.CompanionFiles[0]);
+
+        var row = new OperationRowViewModel(operation, result);
+        Assert.Same(result, row.Result);
+        Assert.NotNull(row.Result);
+        Assert.NotNull(row.Result.CompanionFiles);
+    }
+
     private PlannedOperation CreateOperation(string sourcePath, string outputName, SourceFormat format)
     {
         var targetDir = Path.Combine(_rootPath, "_converted");

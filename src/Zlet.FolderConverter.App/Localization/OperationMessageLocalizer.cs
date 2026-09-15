@@ -87,7 +87,12 @@ public static class OperationMessageLocalizer
             ["anydoc_protocol_error"] = "AnydocProtocolError",
             ["anydoc_worker_missing_response"] = "AnydocWorkerMissingResponse",
             ["text_encoding_unsupported"] = "TextEncodingUnsupported",
-            ["companion_assets_invalid"] = "CompanionAssetsInvalid"
+            ["companion_assets_invalid"] = "CompanionAssetsInvalid",
+            ["unsupported_format"] = "DocumentUnsupportedFormat",
+            ["source_not_found"] = "DocumentSourceNotFound",
+            ["write_error"] = "DocumentWriteError",
+            ["conversion_failed"] = "DoclingConversionFailed",
+            ["invalid_request"] = "AnydocProtocolError"
         };
 
     private static readonly IReadOnlyDictionary<string, string> KnownMessageKeys =
@@ -123,27 +128,41 @@ public static class OperationMessageLocalizer
             ["Компонент Markdown недоступен (исполняемый файл zlet-anydoc-worker.exe не найден)."] = "DoclingComponentUnavailable",
             ["Компонент преобразования Docling недоступен."] = "DoclingComponentUnavailable",
             ["Версия компонента Markdown несовместима с текущим приложением."] = "DoclingVersionIncompatible",
+            ["Версия компонента Markdown несовместима с приложением."] = "DoclingVersionIncompatible",
             ["Не удалось преобразовать документ в Markdown."] = "DoclingConversionFailed",
             ["Документ защищён паролем или зашифрован."] = "DocumentEncrypted",
+            ["Документ зашифрован или защищен паролем."] = "DocumentEncrypted",
+            ["Документ зашифрован или защищён паролем."] = "DocumentEncrypted",
             ["The document is password-protected or encrypted."] = "DocumentEncrypted",
             ["Превышен лимит ресурсов при обработке документа."] = "DocumentResourceLimit",
+            ["Документ превысил допустимые лимиты ресурсов при обработке."] = "DocumentResourceLimit",
             ["Resource limit exceeded while processing document."] = "DocumentResourceLimit",
             ["Структура документа повреждена или некорректна."] = "MalformedDocument",
             ["Document structure is corrupted or invalid."] = "MalformedDocument",
             ["Не удалось прочитать содержимое документа."] = "DocumentReadError",
+            ["Не удалось прочитать исходный документ."] = "DocumentReadError",
             ["Failed to read document contents."] = "DocumentReadError",
             ["Не удалось экспортировать встроенные ресурсы документа."] = "AssetExportError",
+            ["Не удалось извлечь встроенные изображения документа."] = "AssetExportError",
             ["Failed to export embedded document assets."] = "AssetExportError",
             ["Не удалось запустить процесс Markdown."] = "AnydocWorkerStartFailure",
             ["Failed to launch Markdown worker process."] = "AnydocWorkerStartFailure",
             ["Некорректный ответ процесса Markdown."] = "AnydocProtocolError",
+            ["Ошибка протокола взаимодействия с компонентом Markdown."] = "AnydocProtocolError",
             ["Invalid response from Markdown worker process."] = "AnydocProtocolError",
             ["Процесс Markdown завершился без ответа."] = "AnydocWorkerMissingResponse",
             ["Markdown worker process terminated without response."] = "AnydocWorkerMissingResponse",
+            ["Процесс Markdown сообщил о внутренней ошибке."] = "DoclingConversionFailed",
             ["Кодировка текстового файла не поддерживается."] = "TextEncodingUnsupported",
             ["Text file encoding is not supported."] = "TextEncodingUnsupported",
             ["Формат ресурсов результата не прошёл проверку."] = "CompanionAssetsInvalid",
-            ["Result companion assets failed validation."] = "CompanionAssetsInvalid"
+            ["Result companion assets failed validation."] = "CompanionAssetsInvalid",
+            ["Формат документа не поддерживается для преобразования в Markdown."] = "DocumentUnsupportedFormat",
+            ["Document format is not supported for Markdown conversion."] = "DocumentUnsupportedFormat",
+            ["Исходный документ не найден."] = "DocumentSourceNotFound",
+            ["Source document was not found."] = "DocumentSourceNotFound",
+            ["Не удалось записать файл результата Markdown."] = "DocumentWriteError",
+            ["Failed to write Markdown result file."] = "DocumentWriteError"
         };
 
     public static string Localize(

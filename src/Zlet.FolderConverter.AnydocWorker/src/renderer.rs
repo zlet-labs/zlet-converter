@@ -500,7 +500,7 @@ fn render_block(block: &Block, ctx: &RenderContext, depth: usize, out: &mut Stri
             out.push_str("\n\n");
         }
         Block::List(list) => {
-            render_list(list, ctx, depth, out);
+            render_list(list, ctx, "", out);
             out.push('\n');
         }
         Block::Table(table) => {
@@ -561,16 +561,17 @@ fn render_block(block: &Block, ctx: &RenderContext, depth: usize, out: &mut Stri
     }
 }
 
-fn render_list(list: &List, ctx: &RenderContext, depth: usize, out: &mut String) {
-    let indent = "  ".repeat(depth);
+fn render_list(list: &List, ctx: &RenderContext, parent_indent: &str, out: &mut String) {
     for (i, item) in list.items.iter().enumerate() {
-        let prefix = if let Some(ref label) = item.marker_label {
-            format!("{}{} ", indent, label.trim())
+        let marker_str = if let Some(ref label) = item.marker_label {
+            format!("{} ", label.trim())
         } else if list.marker == MarkerKind::Bullet {
-            format!("{}* ", indent)
+            "* ".to_string()
         } else {
-            format!("{}{}. ", indent, list.marker.ordinal(list.start + i as u64))
+            format!("{}. ", list.marker.ordinal(list.start + i as u64))
         };
+        let prefix = format!("{}{}", parent_indent, marker_str);
+        let continuation_indent = format!("{}{}", parent_indent, " ".repeat(marker_str.len()));
 
         if item.blocks.is_empty() {
             out.push_str(&prefix);
@@ -580,41 +581,88 @@ fn render_list(list: &List, ctx: &RenderContext, depth: usize, out: &mut String)
 
         for (b_idx, block) in item.blocks.iter().enumerate() {
             if b_idx == 0 {
-                out.push_str(&prefix);
                 match block {
                     Block::Paragraph(inlines) => {
-                        render_inlines(inlines, ctx, out);
-                        out.push('\n');
+                        let mut p_text = String::new();
+                        render_inlines(inlines, ctx, &mut p_text);
+                        if p_text.is_empty() {
+                            out.push_str(&prefix);
+                            out.push('\n');
+                        } else {
+                            for (l_idx, line) in p_text.lines().enumerate() {
+                                if l_idx == 0 {
+                                    out.push_str(&prefix);
+                                } else if line.is_empty() {
+                                    out.push('\n');
+                                    continue;
+                                } else {
+                                    out.push_str(&continuation_indent);
+                                }
+                                out.push_str(line);
+                                out.push('\n');
+                            }
+                        }
                     }
                     Block::List(sub_list) => {
+                        out.push_str(&prefix);
                         out.push('\n');
-                        render_list(sub_list, ctx, depth + 1, out);
+                        render_list(sub_list, ctx, &continuation_indent, out);
                     }
                     _ => {
                         let mut sub = String::new();
-                        render_block(block, ctx, depth + 1, &mut sub);
-                        out.push_str(sub.trim());
-                        out.push('\n');
+                        render_block(block, ctx, 0, &mut sub);
+                        let trimmed = sub.trim_end_matches('\n');
+                        if trimmed.is_empty() {
+                            out.push_str(&prefix);
+                            out.push('\n');
+                        } else {
+                            for (l_idx, line) in trimmed.lines().enumerate() {
+                                if l_idx == 0 {
+                                    out.push_str(&prefix);
+                                } else if line.is_empty() {
+                                    out.push('\n');
+                                    continue;
+                                } else {
+                                    out.push_str(&continuation_indent);
+                                }
+                                out.push_str(line);
+                                out.push('\n');
+                            }
+                        }
                     }
                 }
             } else {
-                let sub_indent = "  ".repeat(depth + 1);
                 match block {
                     Block::Paragraph(inlines) => {
-                        out.push_str(&sub_indent);
-                        render_inlines(inlines, ctx, out);
                         out.push('\n');
+                        let mut p_text = String::new();
+                        render_inlines(inlines, ctx, &mut p_text);
+                        for line in p_text.lines() {
+                            if line.is_empty() {
+                                out.push('\n');
+                            } else {
+                                out.push_str(&continuation_indent);
+                                out.push_str(line);
+                                out.push('\n');
+                            }
+                        }
                     }
                     Block::List(sub_list) => {
-                        render_list(sub_list, ctx, depth + 1, out);
+                        render_list(sub_list, ctx, &continuation_indent, out);
                     }
                     _ => {
+                        out.push('\n');
                         let mut sub = String::new();
-                        render_block(block, ctx, depth + 1, &mut sub);
-                        for line in sub.lines() {
-                            out.push_str(&sub_indent);
-                            out.push_str(line);
-                            out.push('\n');
+                        render_block(block, ctx, 0, &mut sub);
+                        let trimmed = sub.trim_end_matches('\n');
+                        for line in trimmed.lines() {
+                            if line.is_empty() {
+                                out.push('\n');
+                            } else {
+                                out.push_str(&continuation_indent);
+                                out.push_str(line);
+                                out.push('\n');
+                            }
                         }
                     }
                 }
@@ -1432,7 +1480,7 @@ mod tests {
         };
         let ctx = RenderContext { asset_map: HashMap::new() };
         let mut out = String::new();
-        render_list(&bullet_list, &ctx, 0, &mut out);
+        render_list(&bullet_list, &ctx, "", &mut out);
         assert!(out.contains("* First\n"));
         assert!(out.contains("* Second\n"));
 
@@ -1455,10 +1503,93 @@ mod tests {
             ],
         };
         let mut out_ordered = String::new();
-        render_list(&ordered_list, &ctx, 0, &mut out_ordered);
+        render_list(&ordered_list, &ctx, "", &mut out_ordered);
         assert!(out_ordered.contains("1. One\n"));
         assert!(out_ordered.contains("2. Two\n"));
         assert!(out_ordered.contains("3-a) Custom\n"));
+    }
+
+    #[test]
+    fn test_render_list_multi_paragraph_and_nested_indent() {
+        let ctx = RenderContext { asset_map: HashMap::new() };
+
+        // Test 1: Multi-paragraph bullet item
+        let multi_para_bullet = List {
+            marker: MarkerKind::Bullet,
+            start: 1,
+            items: vec![ListItem {
+                blocks: vec![
+                    Block::Paragraph(vec![Inline::plain("First paragraph")]),
+                    Block::Paragraph(vec![Inline::plain("Second paragraph")]),
+                ],
+                marker_label: None,
+            }],
+        };
+        let mut out1 = String::new();
+        render_list(&multi_para_bullet, &ctx, "", &mut out1);
+        assert_eq!(out1, "* First paragraph\n\n  Second paragraph\n");
+
+        // Test 2: Multi-paragraph ordered item (10. Item)
+        let multi_para_ordered = List {
+            marker: MarkerKind::Decimal,
+            start: 10,
+            items: vec![ListItem {
+                blocks: vec![
+                    Block::Paragraph(vec![Inline::plain("Line one")]),
+                    Block::Paragraph(vec![Inline::plain("Line two")]),
+                ],
+                marker_label: None,
+            }],
+        };
+        let mut out2 = String::new();
+        render_list(&multi_para_ordered, &ctx, "", &mut out2);
+        assert_eq!(out2, "10. Line one\n\n    Line two\n");
+
+        // Test 3: Nested list under 1. (continuation indent = 3 spaces)
+        let nested_under_1 = List {
+            marker: MarkerKind::Decimal,
+            start: 1,
+            items: vec![ListItem {
+                blocks: vec![
+                    Block::Paragraph(vec![Inline::plain("Parent 1")]),
+                    Block::List(List {
+                        marker: MarkerKind::Bullet,
+                        start: 1,
+                        items: vec![ListItem {
+                            blocks: vec![Block::Paragraph(vec![Inline::plain("Child")])],
+                            marker_label: None,
+                        }],
+                    }),
+                ],
+                marker_label: None,
+            }],
+        };
+        let mut out3 = String::new();
+        render_list(&nested_under_1, &ctx, "", &mut out3);
+        assert_eq!(out3, "1. Parent 1\n   * Child\n");
+
+        // Test 4: Nested list under 10. (continuation indent = 4 spaces)
+        let nested_under_10 = List {
+            marker: MarkerKind::Decimal,
+            start: 10,
+            items: vec![ListItem {
+                blocks: vec![
+                    Block::Paragraph(vec![Inline::plain("Parent 10")]),
+                    Block::List(List {
+                        marker: MarkerKind::Bullet,
+                        start: 1,
+                        items: vec![ListItem {
+                            blocks: vec![Block::Paragraph(vec![Inline::plain("Child")])],
+                            marker_label: None,
+                        }],
+                    }),
+                ],
+                marker_label: None,
+            }],
+        };
+        let mut out4 = String::new();
+        render_list(&nested_under_10, &ctx, "", &mut out4);
+        assert_eq!(out4, "10. Parent 10\n    * Child\n");
     }
 
     #[test]

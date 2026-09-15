@@ -1704,7 +1704,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var results = Operations
             .Where(row => selectedPaths.Contains(row.Operation.OperationKey)
                           && row.Operation.Status == OperationStatus.Succeeded)
-            .Select(row => new ConversionResult(
+            .Select(row => row.Result ?? new ConversionResult(
                 row.Operation,
                 OperationStatus.Succeeded,
                 row.Operation.Message))

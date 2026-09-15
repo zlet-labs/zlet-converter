@@ -56,10 +56,12 @@ public sealed class InstallerPackagingTests
         var root = FindRepositoryRoot();
         var anydocLicense = Path.Combine(root, "licenses", "anydoc-MIT.txt");
         var rustDeps = Path.Combine(root, "licenses", "RUST_DEPENDENCIES.md");
+        var rustLicenses = Path.Combine(root, "licenses", "RUST_THIRD_PARTY_LICENSES.txt");
         var thirdPartyNotices = Path.Combine(root, "THIRD_PARTY_NOTICES.md");
 
         Assert.True(File.Exists(anydocLicense), "licenses/anydoc-MIT.txt must exist.");
         Assert.True(File.Exists(rustDeps), "licenses/RUST_DEPENDENCIES.md must exist.");
+        Assert.True(File.Exists(rustLicenses), "licenses/RUST_THIRD_PARTY_LICENSES.txt must exist.");
         Assert.True(File.Exists(thirdPartyNotices), "THIRD_PARTY_NOTICES.md must exist.");
 
         var licenseContent = File.ReadAllText(anydocLicense);
@@ -70,10 +72,18 @@ public sealed class InstallerPackagingTests
         Assert.Contains("anydoc", rustDepsContent);
         Assert.Contains("42bf1c5ecdde9eb0d96d6bd75a9e6698cf93b14c", rustDepsContent);
 
+        var rustLicensesContent = File.ReadAllText(rustLicenses);
+        Assert.Contains("MIT License", rustLicensesContent);
+        Assert.Contains("Apache License", rustLicensesContent);
+        Assert.Contains("BSD 3-Clause License", rustLicensesContent);
+        Assert.Contains("The Unlicense", rustLicensesContent);
+        Assert.Contains("Zlib License", rustLicensesContent);
+
         var noticesContent = File.ReadAllText(thirdPartyNotices);
         Assert.Contains("anydoc", noticesContent);
         Assert.Contains("42bf1c5ecdde9eb0d96d6bd75a9e6698cf93b14c", noticesContent);
         Assert.Contains("licenses/anydoc-MIT.txt", noticesContent);
+        Assert.Contains("licenses/RUST_THIRD_PARTY_LICENSES.txt", noticesContent);
     }
 
     [Fact]

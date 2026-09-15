@@ -5,4 +5,5 @@ public sealed record ConversionResult(
     OperationStatus Status,
     string Message,
     ConversionDiagnostic? Diagnostic = null,
-    string? CompanionDirectoryPath = null);
+    string? CompanionDirectoryPath = null,
+    IReadOnlyList<string>? CompanionFiles = null);

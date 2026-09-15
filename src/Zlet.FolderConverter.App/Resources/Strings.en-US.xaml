@@ -140,4 +140,7 @@
   <sys:String x:Key="AnydocWorkerMissingResponse">Markdown worker process terminated without response.</sys:String>
   <sys:String x:Key="TextEncodingUnsupported">Text file encoding is not supported.</sys:String>
   <sys:String x:Key="CompanionAssetsInvalid">Result companion assets failed validation.</sys:String>
+  <sys:String x:Key="DocumentUnsupportedFormat">Document format is not supported for Markdown conversion.</sys:String>
+  <sys:String x:Key="DocumentSourceNotFound">Source document was not found.</sys:String>
+  <sys:String x:Key="DocumentWriteError">Failed to write Markdown result file.</sys:String>
 </ResourceDictionary>

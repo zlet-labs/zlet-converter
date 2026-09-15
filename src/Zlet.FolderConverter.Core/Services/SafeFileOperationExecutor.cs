@@ -199,6 +199,7 @@ internal sealed class SafeFileOperationExecutor
             var hasCompanionDir = Directory.Exists(temporaryCompanionDir)
                 && Directory.EnumerateFileSystemEntries(temporaryCompanionDir).Any();
 
+            IReadOnlyList<string>? promotedCompanionFiles = null;
             if (hasCompanionDir)
             {
                 targetCompanionDir = Path.Combine(targetDirectory, companionDirName);
@@ -219,6 +220,10 @@ internal sealed class SafeFileOperationExecutor
                         "Недопустимый путь результата.",
                         "unsafe_target");
                 }
+
+                promotedCompanionFiles = Directory.EnumerateFiles(temporaryCompanionDir, "*", SearchOption.AllDirectories)
+                    .Select(f => Path.Combine(targetCompanionDir, Path.GetRelativePath(temporaryCompanionDir, f)))
+                    .ToArray();
             }
 
             stagingPath = Path.Combine(
@@ -286,7 +291,8 @@ internal sealed class SafeFileOperationExecutor
                 OperationStatus.Succeeded,
                 successMessage,
                 successDiagnostic,
-                promotedCompanionDir ? targetCompanionDir : null);
+                promotedCompanionDir ? targetCompanionDir : null,
+                promotedCompanionDir ? promotedCompanionFiles : null);
         }
         catch (OperationCanceledException)
         {
