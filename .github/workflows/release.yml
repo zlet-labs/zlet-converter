@@ -82,10 +82,20 @@ jobs:
           if ($releaseExit -eq 0) {
             $release = $releaseJson | ConvertFrom-Json
             if ($release.isDraft -eq $true) {
-              Write-Output "Draft Release $tag already exists. Deleting the stale draft and its tag so the current commit is rebuilt and re-uploaded."
-              gh release delete $tag --repo $env:GITHUB_REPOSITORY --yes --cleanup-tag
+              Write-Output "Draft Release $tag already exists. Deleting the stale draft so the current commit can be rebuilt and re-uploaded."
+              gh release delete $tag --repo $env:GITHUB_REPOSITORY --yes
               if ($LASTEXITCODE -ne 0) {
                 throw "Failed to remove stale Draft Release $tag. Refusing to continue with potentially stale assets."
+              }
+
+              gh api "repos/$env:GITHUB_REPOSITORY/git/ref/tags/$tag" *> $null
+              $staleTagExit = $LASTEXITCODE
+              if ($staleTagExit -eq 0) {
+                Write-Output "Tag $tag exists after deleting the draft. Removing the stale tag explicitly."
+                gh api --method DELETE "repos/$env:GITHUB_REPOSITORY/git/refs/tags/$tag" *> $null
+                if ($LASTEXITCODE -ne 0) {
+                  throw "Failed to remove stale tag $tag. Refusing to continue with potentially stale release identity."
+                }
               }
             }
             else {
