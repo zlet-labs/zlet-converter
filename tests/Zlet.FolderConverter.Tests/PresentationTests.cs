@@ -903,7 +903,7 @@ public sealed class PresentationTests : IDisposable
         viewModel.OutputPath = manualFolder;
 
         viewModel.SelectedOutputMode = OutputMode.Zip;
-        Assert.EndsWith("ZletConverter-v0.0.3-results.zip", viewModel.OutputPath);
+        Assert.EndsWith("ZletConverter-v0.1.0-results.zip", viewModel.OutputPath);
         var manualZip = Path.Combine(_rootPath, "manual.zip");
         viewModel.OutputPath = manualZip;
 
@@ -1366,9 +1366,6 @@ public sealed class PresentationTests : IDisposable
     [Fact]
     public async Task Preview_sort_by_size_uses_numeric_bytes_not_string()
     {
-        // Sizes: 1 MB, 10 MB, 2 MB
-        // In string comparison: "1 MB" < "10 MB" < "2 MB"
-        // In numeric comparison: 1 MB < 2 MB < 10 MB
         var ops = new[]
         {
             new PlannedOperation(Path.Combine(_rootPath, "file-1mb.bin"), "file-1mb.bin", SourceFormat.Unknown, ConversionTarget.Skip, "", "", false, OperationStatus.Ready, "", SourceSizeBytes: 1024 * 1024),
@@ -1406,28 +1403,22 @@ public sealed class PresentationTests : IDisposable
         var viewModel = CreateStatusViewModel(ops, timeProvider: timeProvider);
         await viewModel.ScanAsync();
 
-        // Fast row takes 1 second
         var fastRow = viewModel.Operations[0];
         fastRow.BeginExecution(timeProvider.GetTimestamp());
         timeProvider.Advance(TimeSpan.FromSeconds(1));
         fastRow.CompleteExecution(new ConversionResult(fastRow.Operation, OperationStatus.Succeeded, "ok"), timeProvider, timeProvider.GetTimestamp());
 
-        // Slow row takes 10 seconds
         var slowRow = viewModel.Operations[1];
         slowRow.BeginExecution(timeProvider.GetTimestamp());
         timeProvider.Advance(TimeSpan.FromSeconds(10));
         slowRow.CompleteExecution(new ConversionResult(slowRow.Operation, OperationStatus.Succeeded, "ok"), timeProvider, timeProvider.GetTimestamp());
 
-        // notime.bin has null execution elapsed
-
-        // Sort ascending: fast (1s) < slow (10s), then unmeasured
         viewModel.SortBy(PreviewSortColumn.Time, ListSortDirection.Ascending);
         var visibleAsc = viewModel.VisibleOperations.ToArray();
         Assert.Equal("fast.bin", visibleAsc[0].FilePath);
         Assert.Equal("slow.bin", visibleAsc[1].FilePath);
         Assert.Equal("notime.bin", visibleAsc[2].FilePath);
 
-        // Sort descending: slow (10s) > fast (1s), then unmeasured
         viewModel.SortBy(PreviewSortColumn.Time, ListSortDirection.Descending);
         var visibleDesc = viewModel.VisibleOperations.ToArray();
         Assert.Equal("slow.bin", visibleDesc[0].FilePath);
@@ -1558,23 +1549,19 @@ public sealed class PresentationTests : IDisposable
         var pdfRule = viewModel.FormatRules.Single(r => r.SourceFormat == SourceFormat.Pdf);
         var csvRule = viewModel.FormatRules.Single(r => r.SourceFormat == SourceFormat.Csv);
 
-        // 1. Filter to PDF
         viewModel.SelectRuleFilter(pdfRule);
         Assert.Equal(2, viewModel.VisibleOperations.Count());
 
-        // 2. Sort by Size descending
         viewModel.SortBy(PreviewSortColumn.Size, ListSortDirection.Descending);
         var pdfSorted = viewModel.VisibleOperations.ToArray();
         Assert.Equal("p2.pdf", pdfSorted[0].FilePath);
         Assert.Equal("p1.pdf", pdfSorted[1].FilePath);
 
-        // 3. Switch filter to CSV -> sort remains Size descending!
         viewModel.SelectRuleFilter(csvRule);
         var csvSorted = viewModel.VisibleOperations.ToArray();
         Assert.Equal("c2.csv", csvSorted[0].FilePath);
         Assert.Equal("c1.csv", csvSorted[1].FilePath);
 
-        // 4. Click Show all (ResetPreviewFilter) -> all 4 files returned, still Size descending!
         viewModel.ResetPreviewFilter();
         var allSorted = viewModel.VisibleOperations.ToArray();
         Assert.Equal(4, allSorted.Length);
@@ -1604,23 +1591,19 @@ public sealed class PresentationTests : IDisposable
         };
         await viewModel.ScanAsync();
 
-        // Check 2 files only
         viewModel.ClearSelection();
         viewModel.Operations[0].IsSelected = true;
         viewModel.Operations[2].IsSelected = true;
         Assert.Equal(2, viewModel.SelectedReadyCount);
 
-        // Filter to PDF -> only 1 of the selected files is visible
         var pdfRule = viewModel.FormatRules.Single(r => r.SourceFormat == SourceFormat.Pdf);
         viewModel.SelectRuleFilter(pdfRule);
         Assert.Equal(2, viewModel.VisibleOperations.Count());
-        Assert.Equal(2, viewModel.SelectedReadyCount); // Total selected is still 2!
+        Assert.Equal(2, viewModel.SelectedReadyCount);
 
-        // Sort by Size descending
         viewModel.SortBy(PreviewSortColumn.Size, ListSortDirection.Descending);
         Assert.Equal(2, viewModel.SelectedReadyCount);
 
-        // Clear filter
         viewModel.ResetPreviewFilter();
         Assert.Equal(4, viewModel.VisibleOperations.Count());
         Assert.Equal(2, viewModel.SelectedReadyCount);
@@ -1629,22 +1612,18 @@ public sealed class PresentationTests : IDisposable
         Assert.True(viewModel.Operations[2].IsSelected);
         Assert.False(viewModel.Operations[3].IsSelected);
 
-        // Global SelectAll works on all 4 files even under sort
         viewModel.SelectAll();
         Assert.Equal(4, viewModel.SelectedReadyCount);
         Assert.All(viewModel.Operations, op => Assert.True(op.IsSelected));
 
-        // Global ClearSelection works on all 4 files
         viewModel.ClearSelection();
         Assert.Equal(0, viewModel.SelectedReadyCount);
         Assert.All(viewModel.Operations, op => Assert.False(op.IsSelected));
 
-        // Global InvertSelection works on all 4 files
         viewModel.InvertSelection();
         Assert.Equal(4, viewModel.SelectedReadyCount);
         Assert.All(viewModel.Operations, op => Assert.True(op.IsSelected));
 
-        // ConvertAsync processes all checked files
         await viewModel.ConvertAsync();
         Assert.Equal(4, recordingProcessor.Received.Count);
     }
@@ -1664,21 +1643,17 @@ public sealed class PresentationTests : IDisposable
         var viewModel = CreateStatusViewModel(ops);
         await viewModel.ScanAsync();
 
-        // Sort Action Ascending
         viewModel.SortBy(PreviewSortColumn.Action, ListSortDirection.Ascending);
         var asc = viewModel.VisibleOperations.Select(r => (r.FilePath, r.Operation.Target)).ToArray();
 
-        // Verify that all Copy actions are together
         var copyIndices = asc.Select((item, idx) => (item, idx)).Where(x => x.item.Target == ConversionTarget.Copy).Select(x => x.idx).ToArray();
         Assert.Equal(2, copyIndices.Length);
         Assert.Equal(1, copyIndices[1] - copyIndices[0]);
 
-        // Verify that all Skip actions are together (not separated by Markdown)
         var skipIndices = asc.Select((item, idx) => (item, idx)).Where(x => x.item.Target == ConversionTarget.Skip).Select(x => x.idx).ToArray();
         Assert.Equal(2, skipIndices.Length);
         Assert.Equal(1, skipIndices[1] - skipIndices[0]);
 
-        // Sort Action Descending
         viewModel.SortBy(PreviewSortColumn.Action, ListSortDirection.Descending);
         var desc = viewModel.VisibleOperations.Select(r => (r.FilePath, r.Operation.Target)).ToArray();
 
@@ -1703,24 +1678,19 @@ public sealed class PresentationTests : IDisposable
         var viewModel = CreateStatusViewModel(ops);
         await viewModel.ScanAsync();
 
-        // Simulate partial conversion where file1 was not selected
         var row1 = viewModel.Operations[0];
         var row2 = viewModel.Operations[1];
         row1.MarkNotSelected();
         Assert.True(row1.IsNotSelected);
         Assert.False(row2.IsNotSelected);
 
-        // Sort by Status ascending -> row2 (Ready, rank 1) must be first, row1 (NotSelected, rank 10) must be last
         viewModel.SortBy(PreviewSortColumn.Status, ListSortDirection.Ascending);
         Assert.Equal("file2.bin", viewModel.VisibleOperations.First().FilePath);
         Assert.Equal("file1.bin", viewModel.VisibleOperations.Last().FilePath);
 
-        // Check/restore file1 -> its effective status changes from NotSelected back to Ready
         row1.IsSelected = true;
         Assert.False(row1.IsNotSelected);
 
-        // Verify visible operations immediately re-sorted without manual rescan:
-        // Now both are Ready (rank 1), file1.bin comes before file2.bin alphabetically
         var visible = viewModel.VisibleOperations.ToArray();
         Assert.Equal("file1.bin", visible[0].FilePath);
         Assert.Equal("file2.bin", visible[1].FilePath);
@@ -1741,35 +1711,28 @@ public sealed class PresentationTests : IDisposable
         {
             Assert.NotNull(viewModel);
 
-            // 1. row B starts and completes in 5 seconds
             progress?.Report(new ConversionProgress(0, 2, "b.txt", OperationStatus.Converting));
             clock.Advance(TimeSpan.FromSeconds(5));
             var resultB = new ConversionResult(batch[1], OperationStatus.Succeeded, "ok");
             progress?.Report(new ConversionProgress(1, 2, "b.txt", OperationStatus.Succeeded, resultB));
 
-            // 2. row A starts converting
             progress?.Report(new ConversionProgress(1, 2, "a.txt", OperationStatus.Converting));
 
-            // Clock advances 4 seconds: row A has 4s live elapsed
             clock.Advance(TimeSpan.FromSeconds(4));
             viewModel.RefreshConversionTiming();
 
-            // Sort by Time Ascending: row A (4s) is first, row B (5s) is second
             viewModel.SortBy(PreviewSortColumn.Time, ListSortDirection.Ascending);
             var visibleBefore = viewModel.VisibleOperations.ToArray();
             Assert.Equal("a.txt", visibleBefore[0].FilePath);
             Assert.Equal("b.txt", visibleBefore[1].FilePath);
 
-            // Clock advances 2 seconds: row A live elapsed becomes 6s (> 5s)
             clock.Advance(TimeSpan.FromSeconds(2));
             viewModel.RefreshConversionTiming();
 
-            // VisibleOperations must automatically re-sort: row B (5s) is now before row A (6s)!
             var visibleAfter = viewModel.VisibleOperations.ToArray();
             Assert.Equal("b.txt", visibleAfter[0].FilePath);
             Assert.Equal("a.txt", visibleAfter[1].FilePath);
 
-            // Complete row A
             var resultA = new ConversionResult(batch[0], OperationStatus.Succeeded, "ok");
             progress?.Report(new ConversionProgress(2, 2, "a.txt", OperationStatus.Succeeded, resultA));
 
@@ -1862,14 +1825,12 @@ public sealed class PresentationTests : IDisposable
 
         var pdfRule = viewModel.FormatRules.Single(r => r.SourceFormat == SourceFormat.Pdf);
 
-        // 1. Filter to PDF
         viewModel.SelectRuleFilter(pdfRule);
         var pdfOnly = viewModel.VisibleOperations.ToArray();
         Assert.Equal(2, pdfOnly.Length);
         Assert.Equal(1, pdfOnly[0].DisplayIndex);
         Assert.Equal(2, pdfOnly[1].DisplayIndex);
 
-        // 2. Sort PDF descending by size: p2 is bigger than p1
         viewModel.SortBy(PreviewSortColumn.Size, ListSortDirection.Descending);
         var pdfSorted = viewModel.VisibleOperations.ToArray();
         Assert.Equal("p2.pdf", pdfSorted[0].FilePath);
@@ -1877,7 +1838,6 @@ public sealed class PresentationTests : IDisposable
         Assert.Equal("p1.pdf", pdfSorted[1].FilePath);
         Assert.Equal(2, pdfSorted[1].DisplayIndex);
 
-        // 3. Show all (ResetPreviewFilter) -> all 4 files displayed, numbered 1..4 in sorted order
         viewModel.ResetPreviewFilter();
         var allSorted = viewModel.VisibleOperations.ToArray();
         Assert.Equal(4, allSorted.Length);
@@ -1905,21 +1865,19 @@ public sealed class PresentationTests : IDisposable
         await viewModel.ScanAsync();
 
         viewModel.ClearSelection();
-        viewModel.Operations[1].IsSelected = true; // Select p2.pdf
+        viewModel.Operations[1].IsSelected = true;
         Assert.Equal(1, viewModel.SelectedReadyCount);
 
-        // Sort Size Descending -> p3, p2, p1
         viewModel.SortBy(PreviewSortColumn.Size, ListSortDirection.Descending);
         Assert.Equal(1, viewModel.SelectedReadyCount);
         var visible = viewModel.VisibleOperations.ToArray();
         Assert.Equal(1, visible[0].DisplayIndex);
-        Assert.False(visible[0].IsSelected); // p3
+        Assert.False(visible[0].IsSelected);
         Assert.Equal(2, visible[1].DisplayIndex);
-        Assert.True(visible[1].IsSelected);  // p2
+        Assert.True(visible[1].IsSelected);
         Assert.Equal(3, visible[2].DisplayIndex);
-        Assert.False(visible[2].IsSelected); // p1
+        Assert.False(visible[2].IsSelected);
 
-        // Execute conversion
         await viewModel.ConvertAsync();
         Assert.Single(recordingProcessor.Received);
         Assert.Equal("p2.pdf", recordingProcessor.Received[0].RelativePath);
@@ -1940,10 +1898,8 @@ public sealed class PresentationTests : IDisposable
         var row1 = viewModel.Operations[0];
         var row2 = viewModel.Operations[1];
 
-        // Simulate row1 not selected
         row1.MarkNotSelected();
 
-        // Sort by Status ascending -> row2 is 1st, row1 is 2nd
         viewModel.SortBy(PreviewSortColumn.Status, ListSortDirection.Ascending);
         var visible1 = viewModel.VisibleOperations.ToArray();
         Assert.Equal("file2.bin", visible1[0].FilePath);
@@ -1951,7 +1907,6 @@ public sealed class PresentationTests : IDisposable
         Assert.Equal("file1.bin", visible1[1].FilePath);
         Assert.Equal(2, visible1[1].DisplayIndex);
 
-        // Re-select row1 -> row1 becomes Ready again -> file1.bin is 1st alphabetically, file2.bin is 2nd
         row1.IsSelected = true;
         var visible2 = viewModel.VisibleOperations.ToArray();
         Assert.Equal("file1.bin", visible2[0].FilePath);
@@ -1981,7 +1936,6 @@ public sealed class PresentationTests : IDisposable
         Assert.True(numberColIndex < checkboxColIndex, "Header=# must precede checkbox column");
         Assert.True(checkboxColIndex < sourceFileColIndex, "Checkbox column must precede SourceFile column");
 
-        // FormatRulesDataGrid must not use the Preview-specific cell style
         var rulesGridIndex = xaml.IndexOf("x:Name=\"FormatRulesDataGrid\"", StringComparison.Ordinal);
         var operationsGridIndex = xaml.IndexOf("x:Name=\"OperationsDataGrid\"", StringComparison.Ordinal);
         Assert.True(rulesGridIndex > 0 && operationsGridIndex > rulesGridIndex);
@@ -1997,7 +1951,6 @@ public sealed class PresentationTests : IDisposable
         var stylesPath = Path.Combine(root, "src", "Zlet.FolderConverter.App", "Resources", "AppStyles.xaml");
         var styles = File.ReadAllText(stylesPath);
 
-        // Global DataGridCell style remains clean (ZC-039/main state) without custom ControlTemplate
         var globalCellStyleIndex = styles.IndexOf("<Style TargetType=\"DataGridCell\">", StringComparison.Ordinal);
         var previewCellStyleIndex = styles.IndexOf("<Style x:Key=\"PreviewDataGridCellStyle\"", StringComparison.Ordinal);
         Assert.True(globalCellStyleIndex > 0);
@@ -2007,7 +1960,6 @@ public sealed class PresentationTests : IDisposable
         Assert.Contains("<Setter Property=\"Padding\" Value=\"11,6\" />", globalCellSnippet);
         Assert.DoesNotContain("ControlTemplate", globalCellSnippet);
 
-        // Preview-specific cell style overrides Padding and centers content vertically via ControlTemplate
         var previewCellSnippet = styles.Substring(previewCellStyleIndex, styles.IndexOf("<Style x:Key=\"PreviewTextColumnElementStyle\"", StringComparison.Ordinal) - previewCellStyleIndex);
         Assert.Contains("BasedOn=\"{StaticResource {x:Type DataGridCell}}\"", previewCellSnippet);
         Assert.Contains("<Setter Property=\"Padding\" Value=\"10,4\" />", previewCellSnippet);
@@ -2027,7 +1979,6 @@ public sealed class PresentationTests : IDisposable
             Write($"file{i:D2}.otherbin", $"bin content {i}");
         }
         Write("extra.unknown", "unknown data");
-        // Total: 10 json + 10 otherbin + 1 extra = 21 files
 
         var viewModel = CreateViewModel();
         await viewModel.ScanAsync();
@@ -2035,23 +1986,20 @@ public sealed class PresentationTests : IDisposable
         var visibleAll = viewModel.VisibleOperations.ToArray();
         Assert.Equal(21, visibleAll.Length);
 
-        // 1. Verify 1..21 initial numbering
         for (var i = 0; i < 21; i++)
         {
             Assert.Equal(i + 1, visibleAll[i].DisplayIndex);
         }
 
-        // 2. Filter to "Other" (SourceFormat.Unknown) via rule
         var otherRule = Assert.Single(viewModel.FormatRules.Where(r => r.SourceFormat == SourceFormat.Unknown));
         viewModel.SelectRuleFilter(otherRule);
         var visibleOther = viewModel.VisibleOperations.ToArray();
-        Assert.Equal(11, visibleOther.Length); // 10 otherbin + 1 extra
+        Assert.Equal(11, visibleOther.Length);
         for (var i = 0; i < 11; i++)
         {
             Assert.Equal(i + 1, visibleOther[i].DisplayIndex);
         }
 
-        // 3. Sort by SourceFile descending on filtered other files
         viewModel.SortBy(PreviewSortColumn.SourceFile, ListSortDirection.Descending);
         var visibleOtherSorted = viewModel.VisibleOperations.ToArray();
         Assert.Equal("file10.otherbin", visibleOtherSorted[0].FilePath);
@@ -2059,7 +2007,6 @@ public sealed class PresentationTests : IDisposable
         Assert.Equal("extra.unknown", visibleOtherSorted.Last().FilePath);
         Assert.Equal(11, visibleOtherSorted.Last().DisplayIndex);
 
-        // 4. Show all -> 21 files, 1..21
         viewModel.ResetPreviewFilter();
         var allSortedAgain = viewModel.VisibleOperations.ToArray();
         Assert.Equal(21, allSortedAgain.Length);
@@ -2068,17 +2015,15 @@ public sealed class PresentationTests : IDisposable
             Assert.Equal(i + 1, allSortedAgain[i].DisplayIndex);
         }
 
-        // 5. Selection operations
         viewModel.ClearSelection();
         Assert.Equal(0, viewModel.SelectedReadyCount);
         viewModel.SelectAll();
-        Assert.Equal(10, viewModel.SelectedReadyCount); // only JSON files are ready
+        Assert.Equal(10, viewModel.SelectedReadyCount);
         viewModel.InvertSelection();
         Assert.Equal(0, viewModel.SelectedReadyCount);
         viewModel.Operations.First(r => r.CanSelect).IsSelected = true;
         Assert.Equal(1, viewModel.SelectedReadyCount);
 
-        // 6. Real conversion
         await viewModel.ConvertAsync();
         Assert.True(viewModel.HasFinalReport);
         Assert.True(viewModel.FinalSucceeded >= 1);
