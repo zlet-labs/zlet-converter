@@ -902,19 +902,40 @@ pub fn render_cell_blocks_html(blocks: &[Block], ctx: &RenderContext, out: &mut 
                 out.push_str(&format!("</h{}>", clamped));
             }
             Block::List(list) => {
+                let start_attr = if list.start != 1 {
+                    format!(" start=\"{}\"", list.start)
+                } else {
+                    String::new()
+                };
                 let (open_tag, close_tag) = match list.marker {
                     MarkerKind::Bullet => ("<ul>".to_string(), "</ul>"),
-                    _ => {
-                        if list.start != 1 {
-                            (format!("<ol start=\"{}\">", list.start), "</ol>")
-                        } else {
-                            ("<ol>".to_string(), "</ol>")
-                        }
+                    MarkerKind::Decimal => (format!("<ol{}>", start_attr), "</ol>"),
+                    MarkerKind::LowerAlpha => {
+                        (format!("<ol type=\"a\"{}>", start_attr), "</ol>")
+                    }
+                    MarkerKind::UpperAlpha => {
+                        (format!("<ol type=\"A\"{}>", start_attr), "</ol>")
+                    }
+                    MarkerKind::LowerRoman => {
+                        (format!("<ol type=\"i\"{}>", start_attr), "</ol>")
+                    }
+                    MarkerKind::UpperRoman => {
+                        (format!("<ol type=\"I\"{}>", start_attr), "</ol>")
                     }
                 };
                 out.push_str(&open_tag);
                 for item in &list.items {
-                    out.push_str("<li>");
+                    if let Some(label) = item
+                        .marker_label
+                        .as_deref()
+                        .filter(|label| !label.trim().is_empty())
+                    {
+                        out.push_str("<li style=\"list-style-type:none\"><span class=\"zlet-list-marker\">");
+                        out.push_str(&html_escape(label.trim()));
+                        out.push_str("</span> ");
+                    } else {
+                        out.push_str("<li>");
+                    }
                     render_cell_blocks_html(&item.blocks, ctx, out);
                     out.push_str("</li>");
                 }
@@ -1710,5 +1731,75 @@ mod tests {
         let mut out = String::new();
         render_cell_blocks_html(&[Block::List(list)], &ctx, &mut out);
         assert!(out.contains("<ol start=\"5\"><li>Fifth item</li></ol>"));
+    }
+
+    #[test]
+    fn test_html_table_cell_preserves_ordered_marker_kinds() {
+        let cases = [
+            (MarkerKind::LowerAlpha, "a"),
+            (MarkerKind::UpperAlpha, "A"),
+            (MarkerKind::LowerRoman, "i"),
+            (MarkerKind::UpperRoman, "I"),
+        ];
+        let ctx = RenderContext { asset_map: HashMap::new() };
+
+        for (marker, html_type) in cases {
+            let list = List {
+                marker,
+                start: 3,
+                items: vec![ListItem {
+                    blocks: vec![Block::Paragraph(vec![Inline::plain("Item")])],
+                    marker_label: None,
+                }],
+            };
+            let mut out = String::new();
+            render_cell_blocks_html(&[Block::List(list)], &ctx, &mut out);
+            assert_eq!(
+                out,
+                format!("<ol type=\"{}\" start=\"3\"><li>Item</li></ol>", html_type)
+            );
+        }
+    }
+
+    #[test]
+    fn test_html_table_cell_preserves_custom_marker_label() {
+        let list = List {
+            marker: MarkerKind::Decimal,
+            start: 3,
+            items: vec![ListItem {
+                blocks: vec![Block::Paragraph(vec![Inline::plain("Custom item")])],
+                marker_label: Some("3-a) <unsafe>".into()),
+            }],
+        };
+        let ctx = RenderContext { asset_map: HashMap::new() };
+        let mut out = String::new();
+        render_cell_blocks_html(&[Block::List(list)], &ctx, &mut out);
+        assert!(out.contains(
+            "<li style=\"list-style-type:none\"><span class=\"zlet-list-marker\">3-a) &lt;unsafe&gt;</span> Custom item</li>"
+        ));
+        assert!(!out.contains("<unsafe>"));
+    }
+
+    #[test]
+    fn test_complex_table_path_preserves_roman_list_marker() {
+        let table = Table {
+            grid: vec![vec![CellSlot::Origin(Cell::new(vec![Block::List(List {
+                marker: MarkerKind::LowerRoman,
+                start: 4,
+                items: vec![ListItem {
+                    blocks: vec![Block::Paragraph(vec![Inline::plain("Fourth")])],
+                    marker_label: None,
+                }],
+            })]))]],
+            header_rows: 0,
+            kind: TableKind::Data,
+        };
+        assert!(is_table_complex(&table));
+
+        let ctx = RenderContext { asset_map: HashMap::new() };
+        let mut out = String::new();
+        render_adaptive_table(&table, &ctx, &mut out);
+        assert!(out.contains("<table>"));
+        assert!(out.contains("<ol type=\"i\" start=\"4\"><li>Fourth</li></ol>"));
     }
 }
