@@ -71,24 +71,34 @@ jobs:
           "installer=$installer" >> $env:GITHUB_OUTPUT
           "portable=$portable" >> $env:GITHUB_OUTPUT
 
-      - name: Guard against duplicate release or orphan tag
+      - name: Guard published release and refresh stale draft
         id: gate
         shell: pwsh
         run: |
           $tag = "${{ steps.meta.outputs.tag }}"
 
-          gh release view $tag --repo $env:GITHUB_REPOSITORY --json tagName *> $null
+          $releaseJson = gh release view $tag --repo $env:GITHUB_REPOSITORY --json isDraft,tagName 2>$null
           $releaseExit = $LASTEXITCODE
           if ($releaseExit -eq 0) {
-            Write-Output "Release $tag already exists; nothing to build."
-            "exists=true" >> $env:GITHUB_OUTPUT
-            exit 0
+            $release = $releaseJson | ConvertFrom-Json
+            if ($release.isDraft -eq $true) {
+              Write-Output "Draft Release $tag already exists. Deleting the stale draft and its tag so the current commit is rebuilt and re-uploaded."
+              gh release delete $tag --repo $env:GITHUB_REPOSITORY --yes --cleanup-tag
+              if ($LASTEXITCODE -ne 0) {
+                throw "Failed to remove stale Draft Release $tag. Refusing to continue with potentially stale assets."
+              }
+            }
+            else {
+              Write-Output "Published release $tag already exists; refusing to replace it."
+              "exists=true" >> $env:GITHUB_OUTPUT
+              exit 0
+            }
           }
 
           gh api "repos/$env:GITHUB_REPOSITORY/git/ref/tags/$tag" *> $null
           $tagExit = $LASTEXITCODE
           if ($tagExit -eq 0) {
-            throw "Tag $tag exists without a release. Refusing to reuse an unverified tag."
+            throw "Tag $tag exists without a non-stale release. Refusing to reuse an unverified tag."
           }
 
           "exists=false" >> $env:GITHUB_OUTPUT
@@ -245,7 +255,7 @@ jobs:
           if ("${{ steps.gate.outputs.exists }}" -eq "true") {
             @(
               "## Draft Release",
-              "Release ${{ steps.meta.outputs.tag }} already exists. No duplicate build was created."
+              "Published release ${{ steps.meta.outputs.tag }} already exists. No duplicate build was created."
             ) | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
             exit 0
           }
