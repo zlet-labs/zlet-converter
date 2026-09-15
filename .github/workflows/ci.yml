@@ -18,7 +18,7 @@ jobs:
   verify:
     name: Restore, build and test
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     env:
       DOTNET_NOLOGO: true
       DOTNET_CLI_TELEMETRY_OPTOUT: true
@@ -46,3 +46,7 @@ jobs:
 
       - name: Test
         run: dotnet test FolderConverter.sln -c Release --no-build --logger "trx;LogFileName=test-results.trx"
+
+      - name: Verify portable package and Rust third-party notices
+        shell: powershell
+        run: powershell -ExecutionPolicy Bypass -File scripts/publish-portable.ps1
