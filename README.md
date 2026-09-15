@@ -48,7 +48,7 @@ The default package includes a local native `zlet-anydoc-worker.exe` based on pi
 
 Simple structures render as ordinary GFM Markdown. When a complex table cannot be represented without losing merged-cell or nested structure, Zlet may emit sanitized HTML inside Markdown instead of flattening the source into a prettier lie.
 
-Companion images/assets are exported using relative local references where the parser exposes them. Folder and ZIP output remain transactional and existing outputs are not silently overwritten.
+Companion image/asset export is implemented where the parser exposes assets and uses relative local references. End-to-end packaged preservation is still **provisional in v0.1.0** until acceptance includes a public reproducible asset-bearing fixture; it must not be recorded as passed merely because the renderer has unit coverage.
 
 ## Supported formats in v0.1.0
 
@@ -56,11 +56,15 @@ Companion images/assets are exported using relative local references where the p
 
 | Source | Result | Requirement / status |
 |---|---|---|
-| `.doc`, `.docx` | `.md` + companion assets where applicable | bundled local native worker |
-| `.xls`, `.xlsx` | `.md` | bundled local native worker; displayed/cached values |
-| `.ppt`, `.pptx` | `.md` + companion assets where applicable | bundled local native worker |
+| `.docx` | `.md` + companion assets where applicable | bundled local native worker |
+| legacy `.doc` | `.md` | provisional direct local path; packaged acceptance pending public legacy fixture |
+| `.xlsx` | `.md` | bundled local native worker; displayed/cached values |
+| legacy `.xls` | `.md` | provisional direct local path; packaged acceptance pending public legacy fixture |
+| `.pptx` | `.md` + companion assets where applicable | bundled local native worker |
+| legacy `.ppt` | `.md` | provisional; known table-semantics limitation |
 | straightforward searchable `.pdf` | `.md` | bundled local native worker |
-| scanned/OCR-required `.pdf` | no partial Markdown | explicit `pdf_specialist_required` diagnostic |
+| image-only/no-text scanned `.pdf` | specialist-required diagnostic | explicit `pdf_specialist_required`; no core OCR |
+| partially searchable / mixed OCR `.pdf` | provisional | incidental extractable text can yield partial Markdown; manual review required |
 | `.txt` | `.md` | direct local route |
 | `.html`, `.htm` | Markdown not enabled in v0.1.0 | explicit unsupported capability; no hidden cloud/Python fallback |
 | `.json` | `.md` or `.txt` | existing local route |
@@ -86,7 +90,7 @@ Preview can be filtered by the Rules format rows without changing checkbox selec
 
 Real Excel sheet tests are opt-in: set `ZLET_OFFICE_INTEGRATION=1`, `ZLET_OFFICE_XLSX_SHEETS_FIXTURE` and/or `ZLET_OFFICE_XLS_SHEETS_FIXTURE` to local multi-sheet workbooks with at least two nonempty two-column worksheets, then run the `OfficeIntegration` test category. Automated tests do not substitute for full clean-machine and real Microsoft Office verification.
 
-Word, Excel, and PowerPoint are detected independently. If one Office application is missing, only the corresponding Office-dependent conversion becomes unavailable. The bundled Document → Markdown route does not require Microsoft Office.
+Word, Excel, and PowerPoint are detected independently. If one Office application is missing, only the corresponding Office-dependent conversion becomes unavailable. The bundled modern Document → Markdown routes do not require Microsoft Office.
 
 > **PowerPoint safety:** legacy PPT modernization is refused while user PowerPoint is already running. This avoids interfering with an open presentation. Markdown conversion through the native document worker is a separate route.
 
@@ -119,9 +123,11 @@ Packaged builds are self-contained for .NET 8, so the .NET runtime does not need
 
 Zlet Converter is still **PRE-ALPHA** and does not claim universal lossless conversion.
 
+- Direct legacy `.doc` and `.xls` → Markdown are implemented paths, but v0.1.0 packaged acceptance treats them as provisional until public reproducible legacy fixtures are available.
 - Direct legacy `.ppt` → Markdown can lose table semantics when the upstream parser has already exposed a binary PowerPoint table only as sequential text. Zlet does not invent lost structure.
 - Complex multi-column/layout-heavy PDF is provisional; v0.1.0 does not claim that the lightweight route fully solves those documents.
-- Scanned/OCR-required PDF is detected and reported, but the optional OCR/PDF specialist is not bundled in the core package yet.
+- Image-only/no-extractable-text scanned PDFs are reported as specialist-required. Partially searchable/mixed OCR PDFs are not reliably classified in v0.1.0 and can expose incomplete extracted text, so those outputs require manual review.
+- Companion asset export is implemented, but packaged Folder/ZIP/Stop preservation remains provisional until a public asset-bearing fixture is added to clean-machine acceptance.
 - HTML → Markdown is intentionally disabled in v0.1.0 until a dedicated lightweight local route is qualified.
 - Password-protected, encrypted, corrupted or unsupported documents can fail explicitly.
 
@@ -221,4 +227,4 @@ Zlet Converter is a **Zlet Labs** project: small, practical, self-serve tools wi
 
 [Zlet Labs](https://zlet.app/) · [GitHub Issues](https://github.com/zlet-labs/zlet-converter/issues) · [All releases](https://github.com/zlet-labs/zlet-converter/releases) · [MIT License](LICENSE)
 
-Release notes: [docs/RELEASE_NOTES_v0.1.0.md](docs/RELEASE_NOTES_v0.1.0.md) · Manual verification checklist: [docs/manual-clean-machine-verification.md](docs/manual-clean-machine-verification.md)
+Release notes: [docs/RELEASE_NOTES_v0.1.0.md](docs/RELEASE_NOTES_v0.1.0.md) · Manual verification checklist: [docs/manual-clean-machine-verification-v0.1.0.md](docs/manual-clean-machine-verification-v0.1.0.md)
