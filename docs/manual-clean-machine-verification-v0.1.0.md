@@ -16,6 +16,7 @@ Record before testing:
 - Rust toolchain version;
 - anydoc version and pinned revision;
 - portable ZIP filename, byte size and SHA-256;
+- installer filename, byte size and SHA-256 where tested;
 - unpacked directory size;
 - tester/agent identity and UTC timestamp;
 - evidence directory path.
@@ -47,7 +48,7 @@ Use repository public fixtures from `evaluation/fixtures` and record input SHA-2
 Fixture: `F08_structured.docx`
 
 - Convert to Markdown from the packaged application.
-- Verify headings/hierarchy, paragraphs, list structure, links/tables/assets where applicable.
+- Verify headings/hierarchy, paragraphs, list structure, links/tables where applicable.
 - Confirm output is non-empty and readable.
 - Record lost/duplicated/corrupted content observations.
 
@@ -74,7 +75,7 @@ Verify:
 
 - slide order/boundaries;
 - titles/text/lists/tables exposed by the parser;
-- links/assets/notes where available;
+- links/notes where available;
 - no duplicated slide text.
 
 ### Searchable PDF
@@ -88,13 +89,16 @@ Verify:
 - no obvious duplicate/lost/corrupted content;
 - no cloud/API requirement is triggered.
 
-### Scanned/OCR-required PDF
+### Image-only scanned PDF
 
 Fixture: `F06_scanned.pdf`
 
-- Confirm the core package does **not** silently emit misleading partial Markdown.
+This fixture represents the no-extractable-text case. It does **not** prove reliable classification of every partially searchable or mixed OCR PDF.
+
+- Confirm the core package does not report this image-only fixture as a successful OCR conversion.
 - Confirm explicit specialist/OCR diagnostic (`pdf_specialist_required` or its localized user-facing mapping).
-- Record result as `UNSUPPORTED`/explicit specialist-required for the core package, not as a successful OCR conversion.
+- Record result as `UNSUPPORTED`/explicit specialist-required for the core package, not as successful OCR.
+- Record separately that partially searchable/mixed OCR PDFs remain provisional in v0.1.0: incidental extractable text may produce partial Markdown and requires manual quality review.
 
 ### TXT
 
@@ -108,26 +112,36 @@ Create a small UTF-8 text fixture inside the evidence directory containing ASCII
 - Confirm HTML → Markdown remains explicitly unavailable in v0.1.0.
 - Confirm there is no hidden Python, Docling or cloud fallback.
 
+## Provisional direct legacy Markdown routes
+
+Direct legacy `.doc`, `.xls`, and `.ppt` parsing exists in the native route, but v0.1.0 does not treat those capabilities as fully packaged-verified without public reproducible legacy fixtures.
+
+- If a public/reproducible legacy fixture is available, record its provenance/hash and run direct legacy file → Markdown.
+- For DOC/XLS, verify non-empty usable Markdown and inspect structure/value preservation.
+- For PPT, additionally inspect the known table-semantics limitation: upstream parsing may expose a binary table only as sequential text.
+- If no suitable public fixture is available, record the corresponding direct legacy Markdown item as `BLOCKED`.
+- Do not substitute DOC → DOCX / XLS → XLSX / PPT → PPTX modernization evidence for direct legacy → Markdown evidence.
+
 ## Companion assets and complex structures
 
-Using a public fixture that exposes companion images/assets where available:
+Companion asset export is implemented where the parser exposes assets, but **v0.1.0 packaged asset preservation is provisional until acceptance has a public reproducible asset-bearing fixture**.
 
+If such a fixture is available:
+
+- record fixture provenance and SHA-256;
 - confirm assets are copied to an app-owned companion directory;
 - confirm Markdown references are relative, not machine-specific absolute paths;
 - confirm asset filenames are deterministic and Windows-safe;
-- confirm a complex table uses structure-preserving HTML fallback when required rather than flattening merged/nested relationships merely to stay pure GFM.
+- confirm Folder and ZIP output retain working relative references;
+- confirm a completed asset-bearing Markdown result keeps its assets after Stop.
 
-If the chosen public fixture does not expose an applicable asset/complex-table case, record the item as `BLOCKED` or `NOT APPLICABLE` with evidence instead of inventing a pass.
+If no public reproducible asset-bearing fixture is available, record companion-asset Folder/ZIP/Stop preservation as `BLOCKED`. Unit tests or implementation inspection alone do not turn this item into `PASS`.
 
-## Legacy PPT limitation
+For complex structures independently of companion assets:
 
-For a public legacy PPT fixture when available:
-
-- run direct PPT → Markdown;
-- verify the conversion completes or returns an explicit diagnostic;
-- specifically inspect table semantics;
-- if upstream parsing exposes a table only as sequential paragraphs, record that limitation explicitly;
-- do not claim reconstructed table semantics that are not present in the output.
+- use a reproducible fixture that exercises a complex table when available;
+- confirm structure-preserving HTML fallback is used when required rather than flattening merged/nested relationships merely to stay pure GFM;
+- if no suitable public fixture exists, record that specific complex-table packaged item as `BLOCKED`.
 
 ## Folder output
 
@@ -144,18 +158,18 @@ For a public legacy PPT fixture when available:
 
 - Choose a new ZIP destination.
 - Confirm successful Markdown outputs are included.
-- Confirm companion assets are included with working relative references.
 - Confirm `ZletConverter-report.txt` is at ZIP root.
 - Confirm existing ZIP is not silently overwritten.
 - Verify same-stem source collision handling is deterministic and does not overwrite one result with another.
+- Companion-assets-in-ZIP is a separate acceptance item under **Companion assets and complex structures** and remains `BLOCKED` without a public asset-bearing fixture.
 
-## Stop and completed asset-bearing results
+## Stop and completed results
 
-- Start a mixed batch containing an asset-bearing Markdown conversion if an applicable public fixture is available.
-- Stop while later work is active.
-- Confirm already completed Markdown and its companion assets remain available.
+- Start a mixed batch and Stop while later work is active.
+- Confirm already completed outputs remain available.
 - Confirm queued work stops starting.
 - Confirm partial report/results remain readable.
+- Completed asset-bearing result preservation is a separate acceptance item and remains `BLOCKED` without a public asset-bearing fixture.
 
 ## RU/EN diagnostics
 
@@ -164,7 +178,7 @@ Verify representative native-worker failures/limitations in both UI languages, i
 - unsupported format/capability;
 - source not found or equivalent safe failure path;
 - conversion failure;
-- scanned PDF specialist-required diagnostic.
+- image-only scanned PDF specialist-required diagnostic.
 
 Confirm user-facing text does not leak full private source paths or document content.
 
@@ -178,6 +192,20 @@ During representative Document → Markdown conversions:
 - record the observation method used.
 
 Manual update checking, if explicitly initiated by the tester, is outside the conversion-network observation and must be recorded separately.
+
+## Excel worksheet CSV/TSV export
+
+This retained route requires real Microsoft Excel and non-sensitive workbooks. Use XLS and/or XLSX workbooks with at least two non-empty worksheets, plus hidden/very-hidden and empty sheets where practical.
+
+- Confirm CSV mode creates one UTF-8 CSV per eligible worksheet.
+- Confirm TSV mode creates one UTF-8 TSV per eligible worksheet.
+- Confirm each worksheet appears as its own Preview operation.
+- Confirm hidden/very-hidden worksheet state is represented and not silently treated as a normal selected sheet.
+- Confirm empty worksheets are skipped explicitly.
+- Confirm generated worksheet filenames are deterministic and Windows-safe.
+- Confirm Unicode cell content is preserved in the exported text encoding.
+- Record separately which real Excel conversions/exports were actually run.
+- If Microsoft Excel or suitable non-sensitive fixtures are unavailable, record this route as `BLOCKED`, not `PASS`.
 
 ## Legacy Office modernization
 
@@ -211,7 +239,7 @@ The installer is unsigned in v0.1.0; record SmartScreen/Unknown Publisher behavi
 Recommended immutable directory outside the production repository:
 
 ```text
-C:\Zlet\ZC-057-acceptance\<UTC_TIMESTAMP>\
+C:\Zlet\ZC-090-acceptance\<UTC_TIMESTAMP>\
   environment.txt
   git.txt
   commands.txt
@@ -237,8 +265,8 @@ Use per-item verdicts:
 - `UNSUPPORTED`
 - `BLOCKED`
 
-Do not collapse conversion quality into one opaque score.
+Do not collapse conversion quality into one opaque score. Do not use `NOT APPLICABLE` as an escape hatch for an advertised or implemented capability; if required reproducible evidence is unavailable, use `BLOCKED` and say why.
 
 ## Completion rule
 
-Full v0.1.0 packaged acceptance is complete only when the evidence is reviewed under the project's evidence-review rules and GitHub Issue #90 contains the final evidence-backed verdict. Release publication alone is not packaged acceptance.
+Full v0.1.0 packaged acceptance is complete only when the evidence is reviewed under the project's evidence-review rules and GitHub Issue #90 contains the final evidence-backed verdict. Provisional `BLOCKED` capability items must remain visible rather than being silently converted into passes. Release publication alone is not packaged acceptance.
