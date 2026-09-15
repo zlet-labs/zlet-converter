@@ -27,7 +27,7 @@ installed local copy when the user selects a matching legacy format.
 
 The distributable package also contains `licenses/RUST_THIRD_PARTY_NOTICES.txt`.
 That file is generated during packaging from the locked `zlet-anydoc-worker`
-dependency graph using pinned `cargo-about 0.9.2`, the repository configuration
+dependency graph using pinned `cargo-about 0.9.1`, the repository configuration
 `licenses/cargo-about.toml`, and the template `licenses/cargo-about.hbs`.
 
 The generated notice artifact preserves the license texts detected by
