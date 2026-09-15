@@ -28,6 +28,7 @@ public static class OperationMessageLocalizer
     private static readonly IReadOnlyDictionary<string, string> ErrorCodeKeys =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
+            ["legacy_ppt_table_semantics_partial"] = "LegacyPptTableSemanticsPartial",
             ["worksheet_inspection_failure"] = "WorksheetInspectionFailed",
             ["worksheet_none"] = "WorksheetNone",
             ["worksheet_empty"] = "WorksheetEmpty",
@@ -82,6 +83,8 @@ public static class OperationMessageLocalizer
     private static readonly IReadOnlyDictionary<string, string> KnownMessageKeys =
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
+            ["Преобразовано с ограничением: в старых PPT структура таблиц может быть упрощена."] = "LegacyPptTableSemanticsPartial",
+            ["Converted with a limitation: table structure in legacy PPT files may be simplified."] = "LegacyPptTableSemanticsPartial",
             ["Файл не будет изменён."] = "OperationSkipped",
             ["Выбранное преобразование не поддерживается."] = "OperationUnsupported",
             ["Недопустимый путь результата."] = "OperationInvalidTarget",

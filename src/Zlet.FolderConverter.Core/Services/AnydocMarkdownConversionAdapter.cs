@@ -58,6 +58,14 @@ public sealed class AnydocMarkdownConversionAdapter : IConversionAdapter
                 new ConversionDiagnostic("anydoc_worker_missing")));
         }
 
+        var isLegacyPpt = operation.SourceFormat == SourceFormat.Ppt;
+        var successMessage = isLegacyPpt
+            ? "Преобразовано с ограничением: в старых PPT структура таблиц может быть упрощена."
+            : "Преобразовано.";
+        var successDiagnostic = isLegacyPpt
+            ? new ConversionDiagnostic("legacy_ppt_table_semantics_partial")
+            : null;
+
         return _executor.ExecuteAsync(
             operation,
             operation.Target,
@@ -83,9 +91,10 @@ public sealed class AnydocMarkdownConversionAdapter : IConversionAdapter
                         workerResult.HasStandardOutput,
                         workerResult.HasStandardError);
             },
-            "Преобразовано.",
+            successMessage,
             progress,
-            cancellationToken);
+            cancellationToken,
+            successDiagnostic);
     }
 
     private static string ToUserMessage(AnydocWorkerExecutionResult result) =>

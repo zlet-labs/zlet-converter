@@ -34,7 +34,8 @@ internal sealed class SafeFileOperationExecutor
         Func<string, CancellationToken, Task<TemporaryOutputProductionResult>> produceAsync,
         string successMessage,
         IProgress<int>? progress,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        ConversionDiagnostic? successDiagnostic = null)
     {
         var sourceRoot = ResolveSourceRoot(operation);
         if (!OutputPathGuard.IsSafeSourcePath(
@@ -280,7 +281,7 @@ internal sealed class SafeFileOperationExecutor
                     finalValidation.ErrorCode);
             }
 
-            return new ConversionResult(operation, OperationStatus.Succeeded, successMessage);
+            return new ConversionResult(operation, OperationStatus.Succeeded, successMessage, successDiagnostic);
         }
         catch (OperationCanceledException)
         {

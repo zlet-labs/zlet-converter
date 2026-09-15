@@ -129,4 +129,5 @@
   <sys:String x:Key="DoclingVersionIncompatible">Версия компонента Markdown несовместима с текущим приложением.</sys:String>
   <sys:String x:Key="ScannedPdfUnsupported">PDF не содержит извлекаемого текста (возможно, отсканированный документ). Оптическое распознавание текста (OCR) не поддерживается.</sys:String>
   <sys:String x:Key="DoclingConversionFailed">Не удалось преобразовать документ в Markdown.</sys:String>
+  <sys:String x:Key="LegacyPptTableSemanticsPartial">Преобразовано с ограничением: в старых PPT структура таблиц может быть упрощена.</sys:String>
 </ResourceDictionary>

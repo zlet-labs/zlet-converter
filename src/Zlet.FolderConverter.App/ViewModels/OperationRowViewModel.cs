@@ -127,6 +127,7 @@ public sealed class OperationRowViewModel : INotifyPropertyChanged
         OperationStatus.Ready => "ReadyConvert",
         OperationStatus.Converting => "InProgress",
         OperationStatus.Succeeded when Operation.Target == ConversionTarget.Copy => "Copied",
+        OperationStatus.Succeeded when Result?.Diagnostic?.ErrorCode == "legacy_ppt_table_semantics_partial" => "Warning",
         OperationStatus.Succeeded => "Success",
         OperationStatus.Skipped => "Warning",
         OperationStatus.Conflict => "Conflict",

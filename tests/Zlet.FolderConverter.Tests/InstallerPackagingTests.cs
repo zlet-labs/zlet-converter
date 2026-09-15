@@ -50,6 +50,44 @@ public sealed class InstallerPackagingTests
         Assert.Contains("zlet-anydoc-worker.exe", buildInstaller);
     }
 
+    [Fact]
+    public void Anydoc_license_and_rust_dependencies_exist_in_licenses_directory()
+    {
+        var root = FindRepositoryRoot();
+        var anydocLicense = Path.Combine(root, "licenses", "anydoc-MIT.txt");
+        var rustDeps = Path.Combine(root, "licenses", "RUST_DEPENDENCIES.md");
+        var thirdPartyNotices = Path.Combine(root, "THIRD_PARTY_NOTICES.md");
+
+        Assert.True(File.Exists(anydocLicense), "licenses/anydoc-MIT.txt must exist.");
+        Assert.True(File.Exists(rustDeps), "licenses/RUST_DEPENDENCIES.md must exist.");
+        Assert.True(File.Exists(thirdPartyNotices), "THIRD_PARTY_NOTICES.md must exist.");
+
+        var licenseContent = File.ReadAllText(anydocLicense);
+        Assert.Contains("Sideguide Technologies Inc.", licenseContent);
+        Assert.Contains("MIT License", licenseContent);
+
+        var rustDepsContent = File.ReadAllText(rustDeps);
+        Assert.Contains("anydoc", rustDepsContent);
+        Assert.Contains("42bf1c5ecdde9eb0d96d6bd75a9e6698cf93b14c", rustDepsContent);
+
+        var noticesContent = File.ReadAllText(thirdPartyNotices);
+        Assert.Contains("anydoc", noticesContent);
+        Assert.Contains("42bf1c5ecdde9eb0d96d6bd75a9e6698cf93b14c", noticesContent);
+        Assert.Contains("licenses/anydoc-MIT.txt", noticesContent);
+    }
+
+    [Fact]
+    public void Repository_has_exact_rust_toolchain_pin_to_1_88_0()
+    {
+        var root = FindRepositoryRoot();
+        var toolchainFile = Path.Combine(root, "rust-toolchain.toml");
+        Assert.True(File.Exists(toolchainFile), "rust-toolchain.toml must exist.");
+
+        var content = File.ReadAllText(toolchainFile);
+        Assert.Contains("channel = \"1.88.0\"", content);
+        Assert.Contains("profile = \"minimal\"", content);
+    }
+
     private static string FindRepositoryRoot()
     {
         for (var directory = new DirectoryInfo(AppContext.BaseDirectory);

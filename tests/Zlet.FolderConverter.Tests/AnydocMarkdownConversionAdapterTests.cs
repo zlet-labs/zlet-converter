@@ -1,6 +1,8 @@
 using System.Security.Cryptography;
 using System.Text;
 using Xunit;
+using Zlet.FolderConverter.App.Localization;
+using Zlet.FolderConverter.App.ViewModels;
 using Zlet.FolderConverter.Core.Models;
 using Zlet.FolderConverter.Core.Services;
 
@@ -270,6 +272,92 @@ public sealed class AnydocMarkdownConversionAdapterTests : IDisposable
         Assert.Equal(errorCode, result.Diagnostic?.ErrorCode);
         Assert.Equal(expectedMessage, result.Message);
         Assert.DoesNotContain("Secret", result.Message);
+    }
+
+    [Fact]
+    public async Task Ppt_to_markdown_routes_through_anydoc_and_attaches_legacy_ppt_limitation_diagnostic()
+    {
+        var sourcePath = Path.Combine(_rootPath, "presentation.ppt");
+        await File.WriteAllTextAsync(sourcePath, "dummy ppt content", Encoding.UTF8);
+        var operation = CreateOperation(sourcePath, "presentation.md", SourceFormat.Ppt);
+
+        AnydocWorkerRequest? capturedRequest = null;
+        var mockRunner = new FakeAnydocWorkerRunner(async req =>
+        {
+            capturedRequest = req;
+            await File.WriteAllTextAsync(req.OutputPath, "# Presentation\n\nContent paragraph\n", Encoding.UTF8);
+            return new AnydocWorkerExecutionResult(true);
+        });
+
+        var adapter = new AnydocMarkdownConversionAdapter(mockRunner, new OutputResultValidator());
+        var result = await adapter.ConvertAsync(operation, CancellationToken.None);
+
+        Assert.NotNull(capturedRequest);
+        Assert.Equal(SourceFormat.Ppt, capturedRequest.SourceFormat);
+        Assert.Equal(OperationStatus.Succeeded, result.Status);
+        Assert.NotNull(result.Diagnostic);
+        Assert.Equal("legacy_ppt_table_semantics_partial", result.Diagnostic.ErrorCode);
+        Assert.Equal("Преобразовано с ограничением: в старых PPT структура таблиц может быть упрощена.", result.Message);
+        Assert.True(File.Exists(operation.TargetPath));
+    }
+
+    [Fact]
+    public async Task Pptx_to_markdown_does_not_get_legacy_limitation_diagnostic()
+    {
+        var sourcePath = Path.Combine(_rootPath, "presentation.pptx");
+        await File.WriteAllTextAsync(sourcePath, "dummy pptx content", Encoding.UTF8);
+        var operation = CreateOperation(sourcePath, "presentation.md", SourceFormat.Pptx);
+
+        AnydocWorkerRequest? capturedRequest = null;
+        var mockRunner = new FakeAnydocWorkerRunner(async req =>
+        {
+            capturedRequest = req;
+            await File.WriteAllTextAsync(req.OutputPath, "# Presentation\n\n| Table | Header |\n|---|---|\n| Cell | Value |\n", Encoding.UTF8);
+            return new AnydocWorkerExecutionResult(true);
+        });
+
+        var adapter = new AnydocMarkdownConversionAdapter(mockRunner, new OutputResultValidator());
+        var result = await adapter.ConvertAsync(operation, CancellationToken.None);
+
+        Assert.NotNull(capturedRequest);
+        Assert.Equal(SourceFormat.Pptx, capturedRequest.SourceFormat);
+        Assert.Equal(OperationStatus.Succeeded, result.Status);
+        Assert.Null(result.Diagnostic);
+        Assert.Equal("Преобразовано.", result.Message);
+        Assert.True(File.Exists(operation.TargetPath));
+    }
+
+    [Fact]
+    public void Legacy_ppt_limitation_surfaces_in_russian_and_english_reporting()
+    {
+        var operation = CreateOperation("presentation.ppt", "presentation.md", SourceFormat.Ppt);
+        var diagnostic = new ConversionDiagnostic("legacy_ppt_table_semantics_partial");
+        var result = new ConversionResult(
+            operation,
+            OperationStatus.Succeeded,
+            "Преобразовано с ограничением: в старых PPT структура таблиц может быть упрощена.",
+            diagnostic);
+
+        Assert.True(OperationMessageLocalizer.IsKnownErrorCode("legacy_ppt_table_semantics_partial"));
+
+        var ruLoc = LocalizationService.CreateStandalone(AppLanguage.Russian);
+        var enLoc = LocalizationService.CreateStandalone(AppLanguage.English);
+
+        // Verify ForReport
+        var reportRu = OperationMessageLocalizer.ForReport(result.Operation with { Message = result.Message }, diagnostic.ErrorCode, ruLoc);
+        var reportEn = OperationMessageLocalizer.ForReport(result.Operation with { Message = result.Message }, diagnostic.ErrorCode, enLoc);
+
+        Assert.Equal("Преобразовано с ограничением: в старых PPT структура таблиц может быть упрощена.", reportRu);
+        Assert.Equal("Converted with a limitation: table structure in legacy PPT files may be simplified.", reportEn);
+
+        // Verify OperationRowViewModel presentation in UI
+        var rowRu = new OperationRowViewModel(operation, result, localization: ruLoc);
+        Assert.Equal("Преобразовано с ограничением: в старых PPT структура таблиц может быть упрощена.", rowRu.Message);
+        Assert.Equal("Warning", rowRu.StatusTone);
+
+        var rowEn = new OperationRowViewModel(operation, result, localization: enLoc);
+        Assert.Equal("Converted with a limitation: table structure in legacy PPT files may be simplified.", rowEn.Message);
+        Assert.Equal("Warning", rowEn.StatusTone);
     }
 
     [Fact]
