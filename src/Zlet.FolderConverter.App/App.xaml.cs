@@ -9,6 +9,40 @@ public partial class App : System.Windows.Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        if (HeadlessBatchCommand.IsRequested(e.Args))
+        {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            if (!HeadlessBatchCommand.TryParse(e.Args, out var command, out _)
+                || command is null)
+            {
+                Shutdown(HeadlessBatchCommand.ExitUsage);
+                return;
+            }
+
+            try
+            {
+                var exitCode = Task.Run(() =>
+                        HeadlessBatchRunner.CreateDefault().RunAsync(command, CancellationToken.None))
+                    .GetAwaiter()
+                    .GetResult();
+                Shutdown(exitCode);
+            }
+            catch (HeadlessBatchConfigurationException)
+            {
+                Shutdown(HeadlessBatchCommand.ExitUsage);
+            }
+            catch (OperationCanceledException)
+            {
+                Shutdown(HeadlessBatchCommand.ExitCancelled);
+            }
+            catch
+            {
+                Shutdown(HeadlessBatchCommand.ExitFatal);
+            }
+            return;
+        }
+
         var settings = new AppSettingsStore();
         var saved = settings.LoadLanguage();
         var explicitLanguage = ReadArgument(e.Args, "--language=");

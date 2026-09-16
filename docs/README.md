@@ -5,6 +5,7 @@ This directory contains both current product/release documentation and historica
 ## Current
 
 - [`PRODUCT_DESCRIPTION.md`](PRODUCT_DESCRIPTION.md) — current product description and scope.
+- [`HEADLESS_BATCH.md`](HEADLESS_BATCH.md) — supported headless batch conversion entrypoint and machine-readable evidence contract.
 - [`RELEASE_NOTES_v0.1.0.md`](RELEASE_NOTES_v0.1.0.md) — release notes for the current v0.1.0 PRE-ALPHA release candidate.
 - [`manual-clean-machine-verification-v0.1.0.md`](manual-clean-machine-verification-v0.1.0.md) — canonical packaged Windows acceptance checklist for v0.1.0.
 - GitHub Issue [#90](https://github.com/zlet-labs/zlet-converter/issues/90) — live packaged Windows acceptance state for v0.1.0.
@@ -12,6 +13,8 @@ This directory contains both current product/release documentation and historica
 ## Current architecture / roadmap boundary
 
 The primary product route is **Documents → high-quality Markdown**. Conversion engines are replaceable implementation details behind Zlet-owned routing and diagnostics.
+
+The supported headless batch surface reuses the same app-owned scanner, planner, adapters/workers and conversion processor as the desktop application. It exists for reproducible operator/QA automation and is not a second conversion implementation.
 
 The v0.1.0 package still contains the legacy Microsoft Office/COM worker for legacy Office modernization and Excel worksheet CSV/TSV exports. This is a transitional implementation, not a product contract. GitHub Issue [#84](https://github.com/zlet-labs/zlet-converter/issues/84) tracks replacement of the COM modernization path with a local non-COM worker and removal of installed Microsoft Office as a modernization requirement.
 
