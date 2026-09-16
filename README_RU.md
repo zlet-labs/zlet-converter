@@ -20,18 +20,15 @@ Zlet Converter — privacy-first/local-first приложение для Windows
 
 Один пакет приложения поддерживает русский и английский интерфейс. При первом запуске язык нужно подтвердить явно; позже его можно сразу сменить через **Настройки → Язык**, не перезапуская приложение и не теряя текущий Preview/результаты. Сохраняется только настройка языка в `%LOCALAPPDATA%\Zlet Labs\Zlet Converter\settings.json`; аккаунт, облако и backend не требуются. Для bootstrap доступен запуск `ZletConverter.exe --language=ru-RU` или `--language=en-US`.
 
-> **v0.1.0 имеет зрелость PRE-ALPHA, но публикуется как обычный GitHub Release, а не GitHub Pre-release.** PRE-ALPHA означает зрелость продукта. Установщик пока не подписан Authenticode, поэтому Windows может показать Unknown publisher или предупреждение SmartScreen. Microsoft Office в комплект не входит.
+> **v0.1.0 имеет зрелость PRE-ALPHA и сейчас существует как GitHub Draft Release, пока выполняется packaged Windows acceptance в Issue #90.** Публично релиз ещё не опубликован. После прохождения acceptance-gate v0.1.0 планируется опубликовать как обычный GitHub Release, а не GitHub Pre-release. Установщик пока не подписан Authenticode, поэтому Windows может показать Unknown publisher или предупреждение SmartScreen.
 
 > **О переименовании:** v0.0.2 был опубликован под прежним публичным названием `Zlet Batch Converter`. Его исторические название релиза и имена assets остаются без изменений. v0.0.3 и более новые версии используют актуальное название `Zlet Converter` / `ZletConverter`.
 
-## Скачать v0.1.0
+## Release candidate v0.1.0
 
-| Установщик Windows | Portable ZIP |
-|---|---|
-| **[⬇ Скачать установщик](https://github.com/zlet-labs/zlet-converter/releases/download/v0.1.0/ZletConverter-v0.1.0-Setup-win-x64.exe)** | **[📦 Скачать portable](https://github.com/zlet-labs/zlet-converter/releases/download/v0.1.0/ZletConverter-v0.1.0-win-x64.zip)** |
-| `ZletConverter-v0.1.0-Setup-win-x64.exe` | `ZletConverter-v0.1.0-win-x64.zip` |
+Установщик и portable ZIP v0.1.0 уже собраны и приложены к текущему Draft Release. Maintainers используют эти draft-assets для packaged acceptance. Публичные ссылки на скачивание появятся только после фактической публикации релиза.
 
-[Описание релиза](https://github.com/zlet-labs/zlet-converter/releases/tag/v0.1.0) · [SHA-256](https://github.com/zlet-labs/zlet-converter/releases/download/v0.1.0/SHA256SUMS.txt)
+[Packaged acceptance #90](https://github.com/zlet-labs/zlet-converter/issues/90) · [Все релизы](https://github.com/zlet-labs/zlet-converter/releases) · [Описание v0.1.0](docs/RELEASE_NOTES_v0.1.0.md)
 
 ### Зачем использовать
 
@@ -80,6 +77,8 @@ Companion image/asset export реализован там, где parser пред
 | `.xls`, `.xlsx` | отдельный UTF-8 `.tsv` для каждого листа | установлен Microsoft Excel |
 | поддерживаемые уже совместимые файлы | безопасная копия без изменений | Office не нужен там, где конвертация не требуется |
 
+> **Переходная реализация v0.1.0:** маршруты в таблице выше всё ещё используют старый Microsoft Office/COM worker в текущем коде. Это не целевая архитектура продукта. Issue [#84](https://github.com/zlet-labs/zlet-converter/issues/84) фиксирует замену этой зависимости локальным non-COM worker и удаление установленного Office как требования для modernization. Bundled маршруты Documents → Markdown уже не зависят от Microsoft Office.
+
 При экспорте Excel каждый лист становится отдельной операцией Preview. Скрытые и very-hidden листы видны, но не выбраны по умолчанию; полностью пустые листы явно пропускаются. Имена результата детерминированы и безопасны для Windows, например `sales__Summary.csv`.
 
 Zlet Converter создаёт человекочитаемый `ZletConverter-report.txt` с относительными путями, итоговыми счётчиками, статистикой листов, статусами и безопасной диагностикой. Существующий отчёт не перезаписывается: используются суффиксы `-2`, `-3` и далее.
@@ -88,15 +87,15 @@ Zlet Converter создаёт человекочитаемый `ZletConverter-re
 
 Preview можно фильтровать нажатием строк форматов в Rules без изменения checkbox selection и фактического набора файлов для обработки. Видимое действие **Показать все** очищает активный фильтр. Колонки исходного файла, действия, статуса, результата, размера и времени сортируются по возрастанию/убыванию, а видимые строки нумеруются с 1 по текущему порядку после filter + sort.
 
-Тесты с настоящим Excel запускаются только явно через `ZLET_OFFICE_INTEGRATION=1` и локальные non-sensitive fixtures. Автоматические тесты не заменяют полную clean-machine проверку и реальные Microsoft Office integration tests.
+Тесты с настоящим Excel запускаются только явно через `ZLET_OFFICE_INTEGRATION=1` и локальные non-sensitive fixtures. Автоматические тесты не заменяют полную clean-machine проверку и реальные Microsoft Office integration tests **переходной COM-реализации v0.1.0**.
 
-Word, Excel и PowerPoint определяются независимо. Если одно приложение отсутствует, недоступна только связанная с ним Office-dependent операция. Bundled современные маршруты Document → Markdown не требуют Microsoft Office.
+Word, Excel и PowerPoint определяются независимо переходным worker. Если одно приложение отсутствует, недоступна только связанная с ним Office-dependent операция. Bundled современные маршруты Document → Markdown не требуют Microsoft Office.
 
-> **Безопасность PowerPoint:** legacy PPT modernization не запускается, пока у пользователя уже открыт PowerPoint. Markdown через native document worker является отдельным маршрутом.
+> **Безопасность PowerPoint в переходном worker:** legacy PPT modernization не запускается, пока у пользователя уже открыт PowerPoint. Markdown через native document worker является отдельным маршрутом.
 
 ## Быстрый старт
 
-1. Скачайте установщик или portable ZIP выше.
+1. Получите установщик или portable ZIP из GitHub Releases. Пока v0.1.0 остаётся Draft, maintainers используют assets Draft Release для acceptance.
 2. Запустите `ZletConverter.exe`.
 3. Выберите исходную папку и выполните сканирование.
 4. Проверьте Preview и отметьте нужные операции.
@@ -141,7 +140,7 @@ Zlet Converter всё ещё находится в статусе **PRE-ALPHA** 
 - Файлы обрабатываются локально и не загружаются в облако для конвертации.
 - Обязательный аккаунт, backend, cloud conversion service и LLM API не нужны.
 - UI-процесс не выполняет Office COM automation напрямую.
-- Office modernization идёт через изолированный STA worker-процесс.
+- В v0.1.0 legacy Office modernization идёт через переходный изолированный STA COM worker; #84 фиксирует его замену.
 - Native Markdown worker поставляется локально и использует закреплённый dependency graph.
 - Legacy-файлы и книги Excel для экспорта листов открываются read-only там, где это требуется.
 - Исходник должен оставаться внутри выбранной исходной папки.
@@ -149,7 +148,7 @@ Zlet Converter всё ещё находится в статусе **PRE-ALPHA** 
 - SHA-256 исходника проверяется до и после обработки там, где этого требует существующий safe-operation contract.
 - Результат сначала создаётся во временном/staging расположении и проверяется перед финальным перемещением.
 - Существующие файлы и каталоги результата не перезаписываются.
-- Office-процессы никогда не завершаются только по имени процесса.
+- Переходный Office worker никогда не завершает Office-процессы только по имени процесса.
 - TXT-отчёты используют относительные пути и не должны содержать содержимое документов, пароли, secrets или tokens.
 
 Техническая диагностика может содержать коды ошибок и служебные данные процесса. Она не должна содержать содержимое документов, секреты или полные локальные пути документов.
@@ -204,9 +203,9 @@ artifacts/portable/win-x64/ZletConverter-v0.1.0-win-x64.zip
 </details>
 
 <details>
-<summary><strong>Реальные Microsoft Office integration tests</strong></summary>
+<summary><strong>Переходные Microsoft Office integration tests</strong></summary>
 
-Реальные интеграционные тесты Office запускаются только явно, потому что требуют установленный Microsoft Office и настоящие legacy-файлы:
+Эти integration tests покрывают только COM-реализацию v0.1.0. Они запускаются явно, потому что требуют установленный Microsoft Office и настоящие legacy-файлы; #84 должен удалить эту production-зависимость.
 
 ```powershell
 $env:ZLET_OFFICE_INTEGRATION = "1"
@@ -227,4 +226,4 @@ Zlet Converter — проект **Zlet Labs**: небольшие, практи�
 
 [Zlet Labs](https://zlet.app/) · [GitHub Issues](https://github.com/zlet-labs/zlet-converter/issues) · [Все релизы](https://github.com/zlet-labs/zlet-converter/releases) · [MIT License](LICENSE)
 
-Описание релиза: [docs/RELEASE_NOTES_v0.1.0.md](docs/RELEASE_NOTES_v0.1.0.md) · Чек-лист ручной проверки: [docs/manual-clean-machine-verification-v0.1.0.md](docs/manual-clean-machine-verification-v0.1.0.md)
+Актуальный индекс документации: [docs/README.md](docs/README.md) · Описание v0.1.0: [docs/RELEASE_NOTES_v0.1.0.md](docs/RELEASE_NOTES_v0.1.0.md) · Чек-лист ручной проверки: [docs/manual-clean-machine-verification-v0.1.0.md](docs/manual-clean-machine-verification-v0.1.0.md)
