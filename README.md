@@ -20,18 +20,15 @@ Zlet Converter is a privacy-first/local-first Windows desktop utility for conver
 
 The application UI supports Russian and English in the same package. On first launch, choose a language explicitly; change it later under **Settings → Language** without restarting or losing the current preview/results. Only the language setting is stored in `%LOCALAPPDATA%\Zlet Labs\Zlet Converter\settings.json`; no account, cloud service, or backend is required. Packagers can set the initial choice with `ZletConverter.exe --language=ru-RU` or `--language=en-US`.
 
-> **v0.1.0 is PRE-ALPHA software, but it is published as a normal GitHub Release, not as a GitHub Pre-release.** PRE-ALPHA describes product maturity. The installer is currently unsigned, so Windows may show an Unknown publisher or SmartScreen warning. Microsoft Office is not included.
+> **v0.1.0 is PRE-ALPHA and currently exists as a GitHub Draft Release while packaged Windows acceptance is completed under Issue #90.** It is not publicly published yet. When the acceptance gate is satisfied, v0.1.0 is intended to be published as a normal GitHub Release, not as a GitHub Pre-release. The installer is currently unsigned, so Windows may show an Unknown publisher or SmartScreen warning.
 
 > **Rename note:** v0.0.2 was published under the previous public name `Zlet Batch Converter`. Its historical release title and asset names remain unchanged. v0.0.3 and later use the current `Zlet Converter` / `ZletConverter` naming.
 
-## Download v0.1.0
+## v0.1.0 release candidate
 
-| Windows installer | Portable ZIP |
-|---|---|
-| **[⬇ Download installer](https://github.com/zlet-labs/zlet-converter/releases/download/v0.1.0/ZletConverter-v0.1.0-Setup-win-x64.exe)** | **[📦 Download portable](https://github.com/zlet-labs/zlet-converter/releases/download/v0.1.0/ZletConverter-v0.1.0-win-x64.zip)** |
-| `ZletConverter-v0.1.0-Setup-win-x64.exe` | `ZletConverter-v0.1.0-win-x64.zip` |
+The v0.1.0 installer and portable ZIP have been built and attached to the current Draft Release. Repository maintainers can use those draft assets for packaged acceptance. Public download links will be enabled only after the release is actually published.
 
-[Release notes](https://github.com/zlet-labs/zlet-converter/releases/tag/v0.1.0) · [SHA-256 checksums](https://github.com/zlet-labs/zlet-converter/releases/download/v0.1.0/SHA256SUMS.txt)
+[Packaged acceptance #90](https://github.com/zlet-labs/zlet-converter/issues/90) · [All releases](https://github.com/zlet-labs/zlet-converter/releases) · [Release notes](docs/RELEASE_NOTES_v0.1.0.md)
 
 ### Why use it?
 
@@ -80,6 +77,8 @@ Companion image/asset export is implemented where the parser exposes assets and 
 | `.xls`, `.xlsx` | one UTF-8 `.tsv` per worksheet | Microsoft Excel installed |
 | supported already-compatible files | unchanged safe copy | Office not required where conversion is unnecessary |
 
+> **Transitional v0.1.0 implementation:** the routes in the table above still use the legacy Microsoft Office/COM worker in the currently shipped code. This is not the target architecture. Issue [#84](https://github.com/zlet-labs/zlet-converter/issues/84) tracks replacement of that dependency with a local non-COM worker and removal of installed Office as a modernization requirement. The bundled Documents → Markdown routes already do not depend on Microsoft Office.
+
 For Excel sheet exports, each worksheet is a separate Preview operation. Hidden and very-hidden worksheets remain visible but are not selected by default; empty worksheets are skipped explicitly. Output names are deterministic and Windows-safe, such as `sales__Summary.csv`.
 
 Zlet Converter generates a human-readable `ZletConverter-report.txt` with relative paths, batch counters, worksheet accounting, statuses and safe diagnostics. Existing report names are not silently overwritten; deterministic `-2`, `-3`, ... suffixes are used.
@@ -88,15 +87,15 @@ The final panel retains aggregate and per-workbook sheet summaries, including hi
 
 Preview can be filtered by the Rules format rows without changing checkbox selection or the conversion execution set. A visible **Show all** action clears the active format filter. Source file, action, status, result, size and time columns can be sorted ascending/descending, and visible rows are numbered from 1 according to the current filter + sort order.
 
-Real Excel sheet tests are opt-in: set `ZLET_OFFICE_INTEGRATION=1`, `ZLET_OFFICE_XLSX_SHEETS_FIXTURE` and/or `ZLET_OFFICE_XLS_SHEETS_FIXTURE` to local multi-sheet workbooks with at least two nonempty two-column worksheets, then run the `OfficeIntegration` test category. Automated tests do not substitute for full clean-machine and real Microsoft Office verification.
+Real Excel sheet tests are opt-in: set `ZLET_OFFICE_INTEGRATION=1`, `ZLET_OFFICE_XLSX_SHEETS_FIXTURE` and/or `ZLET_OFFICE_XLS_SHEETS_FIXTURE` to local multi-sheet workbooks with at least two nonempty two-column worksheets, then run the `OfficeIntegration` test category. Automated tests do not substitute for full clean-machine and real Microsoft Office verification of the **transitional v0.1.0 COM implementation**.
 
-Word, Excel, and PowerPoint are detected independently. If one Office application is missing, only the corresponding Office-dependent conversion becomes unavailable. The bundled modern Document → Markdown routes do not require Microsoft Office.
+Word, Excel, and PowerPoint are detected independently by the transitional worker. If one Office application is missing, only the corresponding Office-dependent conversion becomes unavailable. The bundled modern Document → Markdown routes do not require Microsoft Office.
 
-> **PowerPoint safety:** legacy PPT modernization is refused while user PowerPoint is already running. This avoids interfering with an open presentation. Markdown conversion through the native document worker is a separate route.
+> **PowerPoint safety in the transitional worker:** legacy PPT modernization is refused while user PowerPoint is already running. This avoids interfering with an open presentation. Markdown conversion through the native document worker is a separate route.
 
 ## Quick start
 
-1. Download the installer or portable ZIP above.
+1. Obtain the installer or portable ZIP from GitHub Releases. While v0.1.0 remains Draft, maintainers use the Draft Release assets for acceptance.
 2. Run `ZletConverter.exe`.
 3. Choose a source folder and scan it.
 4. Review Preview and select the operations you want.
@@ -141,7 +140,7 @@ The converter is intentionally local-first and defensive around user files.
 - Files are processed locally and are not uploaded for conversion.
 - No mandatory account, backend, cloud conversion service or LLM API is required.
 - The UI process does not perform Office COM automation directly.
-- Office modernization runs through an isolated STA worker process.
+- In v0.1.0, legacy Office modernization runs through the transitional isolated STA COM worker process; #84 tracks its replacement.
 - The native Markdown worker is bundled locally and uses a pinned dependency graph.
 - Legacy files and Excel workbooks used for worksheet export are opened read-only where required.
 - Source files must remain inside the selected source folder.
@@ -149,7 +148,7 @@ The converter is intentionally local-first and defensive around user files.
 - Source SHA-256 is checked before and after processing where the existing safe operation contract requires it.
 - Outputs are produced in temporary/staging locations and validated before the final move.
 - Existing output files/directories are not overwritten.
-- Office processes are never terminated by process name alone.
+- The transitional Office worker never terminates Office processes by process name alone.
 - TXT reports use relative paths and must not contain document contents, passwords, secrets or tokens.
 
 Technical diagnostics may contain error codes and process metadata. They must not contain document contents, secrets, or full local document paths.
@@ -204,9 +203,9 @@ The installer script builds the portable payload, then creates the Windows x64 i
 </details>
 
 <details>
-<summary><strong>Real Microsoft Office integration tests</strong></summary>
+<summary><strong>Transitional Microsoft Office integration tests</strong></summary>
 
-Real Office integration tests are opt-in because they require installed Microsoft Office and real legacy fixtures:
+These integration tests cover the v0.1.0 COM implementation only. They remain opt-in because they require installed Microsoft Office and real legacy fixtures; #84 removes this production dependency.
 
 ```powershell
 $env:ZLET_OFFICE_INTEGRATION = "1"
@@ -227,4 +226,4 @@ Zlet Converter is a **Zlet Labs** project: small, practical, self-serve tools wi
 
 [Zlet Labs](https://zlet.app/) · [GitHub Issues](https://github.com/zlet-labs/zlet-converter/issues) · [All releases](https://github.com/zlet-labs/zlet-converter/releases) · [MIT License](LICENSE)
 
-Release notes: [docs/RELEASE_NOTES_v0.1.0.md](docs/RELEASE_NOTES_v0.1.0.md) · Manual verification checklist: [docs/manual-clean-machine-verification-v0.1.0.md](docs/manual-clean-machine-verification-v0.1.0.md)
+Current documentation index: [docs/README.md](docs/README.md) · Release notes: [docs/RELEASE_NOTES_v0.1.0.md](docs/RELEASE_NOTES_v0.1.0.md) · Manual verification checklist: [docs/manual-clean-machine-verification-v0.1.0.md](docs/manual-clean-machine-verification-v0.1.0.md)
