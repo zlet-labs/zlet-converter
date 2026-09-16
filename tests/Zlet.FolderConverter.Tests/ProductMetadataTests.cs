@@ -11,12 +11,12 @@ public sealed class ProductMetadataTests
     public void App_assembly_uses_public_product_identity_and_version()
     {
         Assert.Equal("ZletConverter", AppAssembly.GetName().Name);
-        Assert.Equal(new Version(0, 0, 3, 0), AppAssembly.GetName().Version);
+        Assert.Equal(new Version(0, 1, 0, 0), AppAssembly.GetName().Version);
         Assert.Equal("Zlet Converter",
             AppAssembly.GetCustomAttribute<AssemblyProductAttribute>()?.Product);
-        Assert.Equal("0.0.3.0",
+        Assert.Equal("0.1.0.0",
             AppAssembly.GetCustomAttribute<AssemblyFileVersionAttribute>()?.Version);
-        Assert.Equal("0.0.3",
+        Assert.Equal("0.1.0",
             AppAssembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion);
     }
 
@@ -26,8 +26,8 @@ public sealed class ProductMetadataTests
         var metadata = AppAssembly
             .GetCustomAttributes<AssemblyMetadataAttribute>()
             .ToDictionary(attribute => attribute.Key, attribute => attribute.Value);
-        Assert.Equal("v0.0.3", metadata["DisplayVersion"]);
-        Assert.Equal("ZletConverter-v0.0.3-win-x64", metadata["PortablePackageName"]);
+        Assert.Equal("v0.1.0", metadata["DisplayVersion"]);
+        Assert.Equal("ZletConverter-v0.1.0-win-x64", metadata["PortablePackageName"]);
     }
 
     [Fact]
@@ -35,9 +35,9 @@ public sealed class ProductMetadataTests
     {
         Assert.Equal("Zlet Converter", global::Zlet.FolderConverter.App.ProductIdentity.Name);
         Assert.Equal("ZletConverter", global::Zlet.FolderConverter.App.ProductIdentity.ExecutableName);
-        Assert.Equal("0.0.3", global::Zlet.FolderConverter.App.ProductIdentity.Version);
+        Assert.Equal("0.1.0", global::Zlet.FolderConverter.App.ProductIdentity.Version);
         Assert.Equal(
-            "ZletConverter-v0.0.3-results.zip",
+            "ZletConverter-v0.1.0-results.zip",
             global::Zlet.FolderConverter.App.ProductIdentity.ResultZipFileName);
     }
 
@@ -51,7 +51,7 @@ public sealed class ProductMetadataTests
         Assert.Contains("# Zlet Converter", readme);
         Assert.Contains("v0.0.2", readme);
         Assert.Contains("https://github.com/zlet-labs/zlet-converter", readme);
-        Assert.Contains("ZletConverter-v0.0.3-win-x64.zip", portableReadme);
+        Assert.Contains("ZletConverter-v0.1.0-win-x64.zip", portableReadme);
         Assert.Contains("previous public name `Zlet Batch Converter`", readme);
         Assert.DoesNotContain("Zlet Folder Converter", readme);
     }
