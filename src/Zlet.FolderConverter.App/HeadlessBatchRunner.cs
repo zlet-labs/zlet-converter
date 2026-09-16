@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -130,19 +131,22 @@ public sealed class HeadlessBatchRunner
             }
             else
             {
-                status = result.Status.ToString();
-                diagnosticCode = result.Diagnostic?.ErrorCode;
-                message = result.Message;
-                resultRelativePath = string.IsNullOrWhiteSpace(result.Operation.ResultRelativePath)
-                    ? RelativeTo(destinationRoot, result.Operation.TargetPath)
-                    : NormalizeRelative(result.Operation.ResultRelativePath);
-                artifacts = await BuildArtifactsAsync(result, destinationRoot, cancellationToken).ConfigureAwait(false);
+                var completedResult = result!;
+                status = completedResult.Status.ToString();
+                diagnosticCode = completedResult.Diagnostic?.ErrorCode;
+                message = completedResult.Message;
+                resultRelativePath = string.IsNullOrWhiteSpace(completedResult.Operation.ResultRelativePath)
+                    ? RelativeTo(destinationRoot, completedResult.Operation.TargetPath)
+                    : NormalizeRelative(completedResult.Operation.ResultRelativePath);
+                artifacts = await BuildArtifactsAsync(completedResult, destinationRoot, cancellationToken).ConfigureAwait(false);
             }
 
-            var artifactIntegrity = artifacts.Any(artifact => artifact.Sha256 is null)
-                ? "FAIL"
-                : status == OperationStatus.Succeeded.ToString()
+            var artifactIntegrity = status == OperationStatus.Succeeded.ToString()
+                ? artifacts.Count > 0 && artifacts.All(artifact => artifact.Sha256 is not null)
                     ? "PASS"
+                    : "FAIL"
+                : artifacts.Any(artifact => artifact.Sha256 is null)
+                    ? "FAIL"
                     : "NOT_APPLICABLE";
 
             items.Add(new HeadlessBatchItem(
@@ -163,7 +167,8 @@ public sealed class HeadlessBatchRunner
 
         stopwatch.Stop();
         var counts = HeadlessBatchCounts.From(items);
-        var hasIssues = scan.Errors.Count > 0
+        var hasIssues = scan.Files.Count == 0
+                        || scan.Errors.Count > 0
                         || counts.Unsupported > 0
                         || counts.EngineUnavailable > 0
                         || counts.Failed > 0
