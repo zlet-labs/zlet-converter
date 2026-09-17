@@ -286,8 +286,8 @@ public sealed class PresentationTests : IDisposable
 
         Assert.Equal(3, viewModel.FormatRules.Count);
         Assert.Equal(ConversionTarget.Txt, RuleFor(viewModel, SourceFormat.Json).SelectedTarget.Target);
-        Assert.Equal(ConversionTarget.Copy, RuleFor(viewModel, SourceFormat.Docx).SelectedTarget.Target);
-        Assert.Equal(ConversionTarget.Copy, RuleFor(viewModel, SourceFormat.Pdf).SelectedTarget.Target);
+        Assert.Equal(ConversionTarget.Markdown, RuleFor(viewModel, SourceFormat.Docx).SelectedTarget.Target);
+        Assert.Equal(ConversionTarget.Markdown, RuleFor(viewModel, SourceFormat.Pdf).SelectedTarget.Target);
         Assert.Equal(3, viewModel.ReadyCount);
         Assert.Equal(0, viewModel.SkippedCount);
     }
@@ -467,6 +467,8 @@ public sealed class PresentationTests : IDisposable
         var viewModel = CreateViewModel();
 
         await viewModel.ScanAsync();
+        RuleFor(viewModel, SourceFormat.Pdf).SelectedTarget =
+            RuleFor(viewModel, SourceFormat.Pdf).Targets.Single(option => option.Target == ConversionTarget.Copy);
         await viewModel.ConvertAsync();
 
         Assert.True(viewModel.HasFinalReport);

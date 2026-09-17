@@ -113,7 +113,7 @@ public sealed class WorksheetReviewTests : IDisposable
         Assert.True(received.IsCancellationRequested);
         gate.SetResult(Success("Stale"));
         await obsolete;
-        Assert.Equal(ConversionTarget.Copy, Assert.Single(vm.Operations).Operation.Target);
+        Assert.Equal(rescan ? ConversionTarget.Markdown : ConversionTarget.Copy, Assert.Single(vm.Operations).Operation.Target);
         Assert.False(vm.IsPlanning);
     }
 
@@ -247,7 +247,7 @@ public sealed class WorksheetReviewTests : IDisposable
         Assert.True(vm.CanOpenResult);
         using (var archive = ZipFile.OpenRead(vm.OutputPath))
         {
-            Assert.Contains(archive.Entries, entry => entry.FullName == "book.xlsx");
+            Assert.Contains(archive.Entries, entry => entry.FullName == "book.md");
             Assert.Contains(archive.Entries, entry => entry.FullName == "ZletConverter-report.txt");
         }
         var bytes = File.ReadAllBytes(vm.OutputPath);
