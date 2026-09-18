@@ -74,8 +74,16 @@ $os = Get-CimInstance Win32_OperatingSystem
 $appVersion = (Get-Item -LiteralPath $exe).VersionInfo.FileVersion
 $startedUtc = [DateTime]::UtcNow.ToString("o")
 
-& $exe batch --source $sourceRoot --destination $outputRoot --target markdown --recursive false --report-json $reportPath
-$exitCode = $LASTEXITCODE
+$processArgs = @(
+    "batch",
+    "--source", ('"{0}"' -f $sourceRoot),
+    "--destination", ('"{0}"' -f $outputRoot),
+    "--target", "markdown",
+    "--recursive", "false",
+    "--report-json", ('"{0}"' -f $reportPath)
+)
+$process = Start-Process -FilePath $exe -ArgumentList $processArgs -Wait -PassThru -NoNewWindow
+$exitCode = $process.ExitCode
 
 $results = @()
 $overallPass = $true
