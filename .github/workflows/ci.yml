@@ -82,7 +82,7 @@ jobs:
         run: |
           chmod +x artifacts/linux-x64/zlet-converter artifacts/linux-x64/zlet-anydoc-worker
           mkdir -p /tmp/zlet-source /tmp/zlet-output /tmp/zlet-evidence
-          cp evaluation/fixtures/F08_structured.docx /tmp/zlet-source/acceptance.docx
+          cp evaluation/fixtures/F08_structured.docx /tmp/zlet-source/document.docx
           printf '# Zlet Linux acceptance\n' > /tmp/zlet-source/acceptance.txt
           artifacts/linux-x64/zlet-converter batch \
             --source /tmp/zlet-source \
@@ -90,7 +90,7 @@ jobs:
             --target markdown \
             --recursive true \
             --report-json /tmp/zlet-evidence/report.json
-          test -s /tmp/zlet-output/acceptance.md
-          test -s /tmp/zlet-output/acceptance.txt.md || true
+          test -s /tmp/zlet-output/document.md
+          test -s /tmp/zlet-output/notes.md
           test -s /tmp/zlet-evidence/report.json
           grep -q '"finalState": "COMPLETED"' /tmp/zlet-evidence/report.json
