@@ -94,3 +94,11 @@ jobs:
           test -s /tmp/zlet-output/notes.md
           test -s /tmp/zlet-evidence/report.json
           grep -q '"finalState": "COMPLETED"' /tmp/zlet-evidence/report.json
+
+      - name: Upload Linux headless artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zlet-converter-linux-x64-${{ github.sha }}
+          path: artifacts/linux-x64
+          if-no-files-found: error
+          retention-days: 14
