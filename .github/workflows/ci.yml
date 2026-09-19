@@ -99,8 +99,8 @@ jobs:
         shell: bash
         run: |
           tar -C artifacts/linux-x64 -czf artifacts/zlet-converter-linux-x64.tar.gz .
-          test "$(tar -tzvf artifacts/zlet-converter-linux-x64.tar.gz | awk '$NF == "./zlet-converter" {print substr($1,1,1)}')" = "x"
-          test "$(tar -tzvf artifacts/zlet-converter-linux-x64.tar.gz | awk '$NF == "./zlet-anydoc-worker" {print substr($1,1,1)}')" = "x"
+          tar -tzvf artifacts/zlet-converter-linux-x64.tar.gz | awk '$NF == "./zlet-converter" && $1 ~ /^-rwx/ { found=1 } END { exit !found }'
+          tar -tzvf artifacts/zlet-converter-linux-x64.tar.gz | awk '$NF == "./zlet-anydoc-worker" && $1 ~ /^-rwx/ { found=1 } END { exit !found }'
 
       - name: Upload Linux headless artifact
         uses: actions/upload-artifact@v4
