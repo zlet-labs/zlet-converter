@@ -16,6 +16,23 @@ ZletConverter.exe batch `
 
 The first contract supports only `--target markdown`. Unknown options, duplicate options and unsupported targets fail closed.
 
+## Linux test/CI runtime
+
+For internal tests, CI and Conversion Lab runs, the same headless contract is available through the cross-platform CLI host:
+
+```bash
+./zlet-converter batch \
+  --source /data/input \
+  --destination /data/output \
+  --target markdown \
+  --recursive true \
+  --report-json /data/evidence/conversion-report.json
+```
+
+The Linux runtime is an internal automation surface, not a public Linux desktop edition. It reuses the same app-owned core and headless runner as the Windows application. Windows-only capabilities such as Microsoft Office COM automation are not a Linux fallback and must remain explicit when unavailable.
+
+Linux CI/regression evidence answers a different question from packaged Windows acceptance and does not replace the Windows release gate.
+
 ## Evidence behavior
 
 The JSON report uses schema `zlet-converter-headless-report/v1` and records:

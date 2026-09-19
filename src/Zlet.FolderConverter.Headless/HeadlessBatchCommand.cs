@@ -1,4 +1,4 @@
-namespace Zlet.FolderConverter.App;
+namespace Zlet.FolderConverter.Headless;
 
 public sealed record HeadlessBatchCommand(
     string SourcePath,

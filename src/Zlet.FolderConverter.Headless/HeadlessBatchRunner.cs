@@ -6,7 +6,7 @@ using System.Text.Json.Serialization;
 using Zlet.FolderConverter.Core.Models;
 using Zlet.FolderConverter.Core.Services;
 
-namespace Zlet.FolderConverter.App;
+namespace Zlet.FolderConverter.Headless;
 
 public sealed class HeadlessBatchConfigurationException(string message) : Exception(message);
 
@@ -178,8 +178,8 @@ public sealed class HeadlessBatchRunner
 
         var report = new HeadlessBatchReport(
             ReportSchemaVersion,
-            ProductIdentity.Name,
-            ProductIdentity.Version,
+            HeadlessProductIdentity.Name,
+            HeadlessProductIdentity.Version,
             "Markdown",
             command.Recursive,
             Path.GetFileName(sourceRoot.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)),

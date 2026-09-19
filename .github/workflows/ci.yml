@@ -51,3 +51,46 @@ jobs:
         if: github.event_name != 'pull_request'
         shell: powershell
         run: powershell -ExecutionPolicy Bypass -File scripts/publish-portable.ps1
+
+
+  linux-headless:
+    name: Linux headless build and smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Build Linux anydoc worker
+        run: cargo build --manifest-path src/Zlet.FolderConverter.AnydocWorker/Cargo.toml --release --locked
+
+      - name: Publish Linux headless runtime
+        run: dotnet publish src/Zlet.FolderConverter.Cli/Zlet.FolderConverter.Cli.csproj -c Release -r linux-x64 --self-contained true -o artifacts/linux-x64
+
+      - name: Smoke test Linux headless runtime
+        shell: bash
+        run: |
+          chmod +x artifacts/linux-x64/zlet-converter artifacts/linux-x64/zlet-anydoc-worker
+          mkdir -p /tmp/zlet-source /tmp/zlet-output /tmp/zlet-evidence
+          cp evaluation/fixtures/F08_structured.docx /tmp/zlet-source/document.docx
+          printf '# Zlet Linux acceptance\n' > /tmp/zlet-source/notes.txt
+          artifacts/linux-x64/zlet-converter batch \
+            --source /tmp/zlet-source \
+            --destination /tmp/zlet-output \
+            --target markdown \
+            --recursive true \
+            --report-json /tmp/zlet-evidence/report.json
+          test -s /tmp/zlet-output/document.md
+          test -s /tmp/zlet-output/notes.md
+          test -s /tmp/zlet-evidence/report.json
+          grep -q '"finalState": "COMPLETED"' /tmp/zlet-evidence/report.json

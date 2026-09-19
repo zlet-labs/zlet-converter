@@ -64,7 +64,7 @@ public sealed class AnydocWorkerProcessRunner : IAnydocWorkerRunner
 
     public string AvailabilityMessage => IsAvailable
         ? "Компонент Markdown доступен."
-        : "Компонент Markdown недоступен (исполняемый файл zlet-anydoc-worker.exe не найден).";
+        : "Компонент Markdown недоступен (исполняемый файл zlet-anydoc-worker не найден).";
 
     public async Task BeginBatchAsync(CancellationToken cancellationToken)
     {
@@ -368,11 +368,15 @@ public sealed class AnydocWorkerProcessRunner : IAnydocWorkerRunner
         if (!string.IsNullOrWhiteSpace(env) && File.Exists(env))
             return Path.GetFullPath(env);
 
+        var workerFileName = OperatingSystem.IsWindows()
+            ? "zlet-anydoc-worker.exe"
+            : "zlet-anydoc-worker";
+        var runtimeDirectory = OperatingSystem.IsWindows() ? "win-x64" : "linux-x64";
         var directCandidates = new[]
         {
-            Path.Combine(AppContext.BaseDirectory, "zlet-anydoc-worker.exe"),
-            Path.Combine(AppContext.BaseDirectory, "runtimes", "win-x64", "native", "zlet-anydoc-worker.exe"),
-            Path.Combine(AppContext.BaseDirectory, "runtimes", "markdown", "zlet-anydoc-worker.exe"),
+            Path.Combine(AppContext.BaseDirectory, workerFileName),
+            Path.Combine(AppContext.BaseDirectory, "runtimes", runtimeDirectory, "native", workerFileName),
+            Path.Combine(AppContext.BaseDirectory, "runtimes", "markdown", workerFileName),
         };
 
         foreach (var c in directCandidates)
@@ -382,10 +386,10 @@ public sealed class AnydocWorkerProcessRunner : IAnydocWorkerRunner
 
         for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
         {
-            var releaseTarget = Path.Combine(dir.FullName, "src", "Zlet.FolderConverter.AnydocWorker", "target", "release", "zlet-anydoc-worker.exe");
+            var releaseTarget = Path.Combine(dir.FullName, "src", "Zlet.FolderConverter.AnydocWorker", "target", "release", workerFileName);
             if (File.Exists(releaseTarget)) return Path.GetFullPath(releaseTarget);
 
-            var debugTarget = Path.Combine(dir.FullName, "src", "Zlet.FolderConverter.AnydocWorker", "target", "debug", "zlet-anydoc-worker.exe");
+            var debugTarget = Path.Combine(dir.FullName, "src", "Zlet.FolderConverter.AnydocWorker", "target", "debug", workerFileName);
             if (File.Exists(debugTarget)) return Path.GetFullPath(debugTarget);
         }
 

@@ -7,6 +7,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{DF088A18-4BE
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zlet.FolderConverter.Core", "src\Zlet.FolderConverter.Core\Zlet.FolderConverter.Core.csproj", "{C3114F24-7E71-444B-8F8A-A0A2F562A25B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zlet.FolderConverter.Headless", "src\Zlet.FolderConverter.Headless\Zlet.FolderConverter.Headless.csproj", "{B72C2674-4875-4EF2-8D1E-713B439BA116}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zlet.FolderConverter.Cli", "src\Zlet.FolderConverter.Cli\Zlet.FolderConverter.Cli.csproj", "{D1D4AC77-5F8A-46FD-A85B-8B7867D5A116}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zlet.FolderConverter.App", "src\Zlet.FolderConverter.App\Zlet.FolderConverter.App.csproj", "{E9581B1B-8F2B-46C7-85BF-BBF4D6E6FE6A}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zlet.FolderConverter.OfficeWorker", "src\Zlet.FolderConverter.OfficeWorker\Zlet.FolderConverter.OfficeWorker.csproj", "{AE894F2B-58E8-4C10-9309-77D1BC039860}"
@@ -26,6 +30,14 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B72C2674-4875-4EF2-8D1E-713B439BA116}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B72C2674-4875-4EF2-8D1E-713B439BA116}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B72C2674-4875-4EF2-8D1E-713B439BA116}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B72C2674-4875-4EF2-8D1E-713B439BA116}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D1D4AC77-5F8A-46FD-A85B-8B7867D5A116}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D1D4AC77-5F8A-46FD-A85B-8B7867D5A116}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D1D4AC77-5F8A-46FD-A85B-8B7867D5A116}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D1D4AC77-5F8A-46FD-A85B-8B7867D5A116}.Release|Any CPU.Build.0 = Release|Any CPU
 		{C3114F24-7E71-444B-8F8A-A0A2F562A25B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{C3114F24-7E71-444B-8F8A-A0A2F562A25B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C3114F24-7E71-444B-8F8A-A0A2F562A25B}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -48,6 +60,8 @@ Global
 		{939D5E43-2C71-483D-B4D0-57C167D87A5F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{B72C2674-4875-4EF2-8D1E-713B439BA116} = {DF088A18-4BEB-4D65-BD8A-A5493D778522}
+		{D1D4AC77-5F8A-46FD-A85B-8B7867D5A116} = {DF088A18-4BEB-4D65-BD8A-A5493D778522}
 		{C3114F24-7E71-444B-8F8A-A0A2F562A25B} = {DF088A18-4BEB-4D65-BD8A-A5493D778522}
 		{E9581B1B-8F2B-46C7-85BF-BBF4D6E6FE6A} = {DF088A18-4BEB-4D65-BD8A-A5493D778522}
 		{AE894F2B-58E8-4C10-9309-77D1BC039860} = {DF088A18-4BEB-4D65-BD8A-A5493D778522}
