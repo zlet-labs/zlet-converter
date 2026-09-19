@@ -1,5 +1,6 @@
 using System.Windows;
 using Zlet.FolderConverter.App.Localization;
+using Zlet.FolderConverter.Headless;
 using Zlet.FolderConverter.App.Settings;
 
 namespace Zlet.FolderConverter.App;
