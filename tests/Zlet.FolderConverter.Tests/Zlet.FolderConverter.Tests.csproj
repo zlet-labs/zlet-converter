@@ -23,6 +23,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Zlet.FolderConverter.App\Zlet.FolderConverter.App.csproj" />
     <ProjectReference Include="..\..\src\Zlet.FolderConverter.Core\Zlet.FolderConverter.Core.csproj" />
+    <ProjectReference Include="..\..\src\Zlet.FolderConverter.Headless\Zlet.FolderConverter.Headless.csproj" />
     <ProjectReference Include="..\..\src\Zlet.FolderConverter.OfficeWorker\Zlet.FolderConverter.OfficeWorker.csproj" />
     <None Include="..\..\src\Zlet.FolderConverter.AnydocWorker\target\release\zlet-anydoc-worker.exe" Link="zlet-anydoc-worker.exe" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\src\Zlet.FolderConverter.AnydocWorker\target\release\zlet-anydoc-worker.exe')" />
   </ItemGroup>
