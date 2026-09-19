@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>zlet-converter</AssemblyName>
+    <RootNamespace>Zlet.FolderConverter.Cli</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Zlet.FolderConverter.Headless\Zlet.FolderConverter.Headless.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Zlet.FolderConverter.AnydocWorker\target\release\zlet-anydoc-worker" Link="zlet-anydoc-worker" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Condition="Exists('..\Zlet.FolderConverter.AnydocWorker\target\release\zlet-anydoc-worker')" />
+  </ItemGroup>
+</Project>
