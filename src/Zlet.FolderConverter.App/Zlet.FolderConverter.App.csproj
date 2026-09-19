@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Zlet.FolderConverter.Core\Zlet.FolderConverter.Core.csproj" />
+    <ProjectReference Include="..\Zlet.FolderConverter.Headless\Zlet.FolderConverter.Headless.csproj" />
     <ProjectReference Include="..\Zlet.FolderConverter.OfficeWorker\Zlet.FolderConverter.OfficeWorker.csproj"
                       ReferenceOutputAssembly="false" />
     <AssemblyMetadata Include="DisplayVersion" Value="$(ZletDisplayVersion)" />
