@@ -99,18 +99,8 @@ jobs:
         shell: bash
         run: |
           tar -C artifacts/linux-x64 -czf artifacts/zlet-converter-linux-x64.tar.gz .
-          tar -tzvf artifacts/zlet-converter-linux-x64.tar.gz | grep -E 'zlet-converter$|zlet-anydoc-worker
-
-
-      - name: Upload Linux headless artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: zlet-converter-linux-x64-${{ github.sha }}
-          path: artifacts/zlet-converter-linux-x64.tar.gz
-          if-no-files-found: error
-          retention-days: 14
-
-
+          test "$(tar -tzvf artifacts/zlet-converter-linux-x64.tar.gz | awk '$NF == "./zlet-converter" {print substr($1,1,1)}')" = "x"
+          test "$(tar -tzvf artifacts/zlet-converter-linux-x64.tar.gz | awk '$NF == "./zlet-anydoc-worker" {print substr($1,1,1)}')" = "x"
 
       - name: Upload Linux headless artifact
         uses: actions/upload-artifact@v4
