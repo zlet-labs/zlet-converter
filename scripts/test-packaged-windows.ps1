@@ -14,6 +14,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
+Import-Module (Join-Path $PSScriptRoot "PackagedAcceptanceMapping.psm1") -Force
 
 function Get-Sha256([string]$Path) {
     return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -166,21 +167,66 @@ $processArgs = @(
 $process = Start-Process -FilePath $exe -ArgumentList $processArgs -Wait -PassThru -NoNewWindow
 $exitCode = $process.ExitCode
 
+$converterReport = $null
+$reportLoadError = $null
+if (Test-Path -LiteralPath $reportPath -PathType Leaf) {
+    try { $converterReport = Get-Content -LiteralPath $reportPath -Raw -Encoding utf8 | ConvertFrom-Json }
+    catch { $reportLoadError = "conversion-report.json could not be parsed: $($_.Exception.Message)" }
+}
+else {
+    $reportLoadError = "conversion-report.json was not created"
+}
+
 $results = @()
 $overallPass = $true
 foreach ($fixture in $fixtureEvidence) {
-    $relativeDirectory = [System.IO.Path]::GetDirectoryName([string]$fixture.file)
-    $stem = [System.IO.Path]::GetFileNameWithoutExtension([string]$fixture.file)
-    $markdownName = $stem + ".md"
-    $markdown = if ([string]::IsNullOrWhiteSpace($relativeDirectory)) { Join-Path $outputRoot $markdownName } else { Join-Path (Join-Path $outputRoot $relativeDirectory) $markdownName }
     $reasons = @()
+    $resolved = $null
+    $markdown = $null
+    $reportedOutput = $null
+    $reportedOutputSha256 = $null
 
-    if (-not (Test-Path -LiteralPath $markdown -PathType Leaf)) {
-        $reasons += "missing Markdown output"
+    if ($reportLoadError) {
+        $reasons += $reportLoadError
     }
     else {
-        $item = Get-Item -LiteralPath $markdown
-        if ($item.Length -eq 0) { $reasons += "empty Markdown output" }
+        try {
+            $resolved = Resolve-ZletReportedArtifact -Report $converterReport -SourceRelativePath ([string]$fixture.file)
+        }
+        catch {
+            $reasons += $_.Exception.Message
+        }
+    }
+
+    if ($resolved) {
+        $item = $resolved.Item
+        if ([string]$item.status -ne "Succeeded") {
+            $reasons += "converter status is $([string]$item.status)"
+        }
+
+        if ($resolved.Artifact) {
+            $reportedOutput = [string]$resolved.Artifact.relativePath
+            $reportedOutputSha256 = ([string]$resolved.Artifact.sha256).ToLowerInvariant()
+            $candidate = [System.IO.Path]::GetFullPath((Join-Path $outputRoot $reportedOutput))
+            $outputPrefix = [System.IO.Path]::GetFullPath($outputRoot).TrimEnd([System.IO.Path]::DirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
+            if (-not $candidate.StartsWith($outputPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+                $reasons += "reported output path escapes output root"
+            }
+            else {
+                $markdown = $candidate
+            }
+        }
+        else {
+            $reasons += "conversion report has no primary artifact for source"
+        }
+    }
+
+    if ($markdown -and -not (Test-Path -LiteralPath $markdown -PathType Leaf)) {
+        $reasons += "reported Markdown output is missing"
+    }
+    elseif ($markdown) {
+        $outputItem = Get-Item -LiteralPath $markdown
+        if ($outputItem.Length -eq 0) { $reasons += "empty Markdown output" }
         if (Test-BinarySourceSignature $markdown) { $reasons += "output still has PDF/OOXML binary signature" }
 
         try {
@@ -191,10 +237,12 @@ foreach ($fixture in $fixtureEvidence) {
             $reasons += "output is not valid UTF-8 text"
         }
 
-        if ($fixture.format -ne "TXT") {
-            $sourceHash = $fixture.sha256
-            $outputHash = Get-Sha256 $markdown
-            if ($sourceHash -eq $outputHash) { $reasons += "output is byte-identical to binary source (Copy regression)" }
+        $actualOutputSha256 = Get-Sha256 $markdown
+        if ($reportedOutputSha256 -and $actualOutputSha256 -ne $reportedOutputSha256) {
+            $reasons += "output SHA-256 does not match conversion report"
+        }
+        if ($fixture.format -ne "TXT" -and $fixture.sha256 -eq $actualOutputSha256) {
+            $reasons += "output is byte-identical to binary source (Copy regression)"
         }
     }
 
@@ -204,8 +252,8 @@ foreach ($fixture in $fixtureEvidence) {
         format = $fixture.format
         source = $fixture.file
         sourceSha256 = $fixture.sha256
-        output = if (Test-Path -LiteralPath $markdown) { [System.IO.Path]::GetFileName($markdown) } else { $null }
-        outputSha256 = if (Test-Path -LiteralPath $markdown) { Get-Sha256 $markdown } else { $null }
+        output = $reportedOutput
+        outputSha256 = if ($markdown -and (Test-Path -LiteralPath $markdown -PathType Leaf)) { Get-Sha256 $markdown } else { $null }
         status = if ($pass) { "PASS" } else { "FAIL" }
         reasons = $reasons
     }
