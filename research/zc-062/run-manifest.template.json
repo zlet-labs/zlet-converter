@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "issue": 123,
+  "parent_issue": 89,
+  "result_id": null,
+  "repository_commit": null,
+  "checker_commit": null,
+  "corpus": {
+    "id": null,
+    "version": null,
+    "hash": null
+  },
+  "environment": {
+    "os": null,
+    "runtime_versions": {},
+    "dependency_versions": {}
+  },
+  "inputs": [],
+  "converter": {
+    "engine": null,
+    "version": null,
+    "config": {}
+  },
+  "outputs": [],
+  "checks": [
+    "QC-EMPTY-001",
+    "QC-SHORT-001",
+    "QC-DUP-001",
+    "QC-HEAD-001",
+    "QC-LIST-001",
+    "QC-TABLE-001",
+    "QC-MARKUP-001",
+    "QC-STABLE-001",
+    "QC-COVER-001"
+  ],
+  "evidence_paths": []
+}
