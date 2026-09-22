@@ -7,7 +7,9 @@ param(
 
     [string]$EvidencePath = (Join-Path (Get-Location) "zlet-acceptance-evidence"),
 
-    [string]$CommitSha = "unknown"
+    [string]$CommitSha = "unknown",
+
+    [string]$TestSetPath
 )
 
 $ErrorActionPreference = "Stop"
@@ -37,12 +39,8 @@ if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) {
     throw "ZletConverter.exe was not found in package path: $packageRoot"
 }
 
-$fixtureMap = @(
-    @{ Format = "DOCX"; Source = "evaluation\fixtures\F08_structured.docx"; Name = "acceptance.docx" },
-    @{ Format = "PDF";  Source = "evaluation\fixtures\F01_simple_text.pdf"; Name = "acceptance.pdf" },
-    @{ Format = "PPTX"; Source = "evaluation\fixtures\F09_slides.pptx"; Name = "acceptance.pptx" },
-    @{ Format = "XLSX"; Source = "evaluation\fixtures\F10_sheets.xlsx"; Name = "acceptance.xlsx" }
-)
+$supportedExtensions = @(".pdf", ".docx", ".pptx", ".xlsx", ".txt", ".doc", ".xls", ".ppt")
+$acceptedManifestRoles = @("smoke_supported_format", "controlled_parity", "real_world_quality")
 
 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
 $runRoot = Join-Path $EvidencePath $timestamp
@@ -52,23 +50,106 @@ $reportPath = Join-Path $runRoot "conversion-report.json"
 New-Item -ItemType Directory -Force -Path $sourceRoot, $outputRoot | Out-Null
 
 $fixtureEvidence = @()
-foreach ($fixture in $fixtureMap) {
-    $source = Join-Path $repoRoot $fixture.Source
-    if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
-        throw "Required public fixture is missing: $source"
-    }
-    $destination = Join-Path $sourceRoot $fixture.Name
-    Copy-Item -LiteralPath $source -Destination $destination
-    $fixtureEvidence += [ordered]@{
-        format = $fixture.Format
-        file = $fixture.Name
-        sha256 = Get-Sha256 $destination
-    }
-}
+$recursive = $false
+$testSetMode = "built_in"
 
-$txtPath = Join-Path $sourceRoot "acceptance.txt"
-[System.IO.File]::WriteAllText($txtPath, "# Zlet packaged acceptance`r`n`r`nDeterministic local TXT fixture.`r`n", [System.Text.UTF8Encoding]::new($false))
-$fixtureEvidence += [ordered]@{ format = "TXT"; file = "acceptance.txt"; sha256 = Get-Sha256 $txtPath }
+if (-not [string]::IsNullOrWhiteSpace($TestSetPath)) {
+    $testSetRoot = (Resolve-Path -LiteralPath $TestSetPath).Path
+    $manifestPath = Join-Path $testSetRoot "manifest.json"
+    $selectedFiles = @()
+
+    if (Test-Path -LiteralPath $manifestPath -PathType Leaf) {
+        $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding utf8 | ConvertFrom-Json
+        foreach ($entry in @($manifest.files)) {
+            if ($acceptedManifestRoles -notcontains [string]$entry.role) { continue }
+
+            $relativePath = ([string]$entry.path).Replace("/", [System.IO.Path]::DirectorySeparatorChar)
+            $extension = [System.IO.Path]::GetExtension($relativePath).ToLowerInvariant()
+            if ($supportedExtensions -notcontains $extension) { continue }
+
+            $source = Join-Path $testSetRoot $relativePath
+            if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
+                throw "Manifest-selected test document is missing: $relativePath"
+            }
+
+            $actualHash = Get-Sha256 $source
+            if ($entry.sha256 -and $actualHash -ne ([string]$entry.sha256).ToLowerInvariant()) {
+                throw "Test document hash does not match manifest: $relativePath"
+            }
+
+            $selectedFiles += [ordered]@{
+                Source = $source
+                RelativePath = $relativePath
+                Format = $extension.TrimStart(".").ToUpperInvariant()
+                Role = [string]$entry.role
+                Sha256 = $actualHash
+            }
+        }
+        $testSetMode = "external_manifest"
+    }
+    else {
+        foreach ($source in Get-ChildItem -LiteralPath $testSetRoot -File -Recurse) {
+            $extension = $source.Extension.ToLowerInvariant()
+            if ($supportedExtensions -notcontains $extension) { continue }
+
+            $relativePath = [System.IO.Path]::GetRelativePath($testSetRoot, $source.FullName)
+            $selectedFiles += [ordered]@{
+                Source = $source.FullName
+                RelativePath = $relativePath
+                Format = $extension.TrimStart(".").ToUpperInvariant()
+                Role = "extension_selected"
+                Sha256 = Get-Sha256 $source.FullName
+            }
+        }
+        $testSetMode = "external_extension_filter"
+    }
+
+    if ($selectedFiles.Count -eq 0) {
+        throw "No supported document inputs were selected from external test set: $testSetRoot"
+    }
+
+    foreach ($selected in $selectedFiles) {
+        $destination = Join-Path $sourceRoot $selected.RelativePath
+        $destinationDirectory = Split-Path -Parent $destination
+        if ($destinationDirectory) { New-Item -ItemType Directory -Force -Path $destinationDirectory | Out-Null }
+        Copy-Item -LiteralPath $selected.Source -Destination $destination
+
+        $fixtureEvidence += [ordered]@{
+            format = $selected.Format
+            file = $selected.RelativePath
+            role = $selected.Role
+            sha256 = $selected.Sha256
+        }
+    }
+    $recursive = $true
+}
+else {
+    $fixtureMap = @(
+        @{ Format = "DOCX"; Source = "evaluation\fixtures\F08_structured.docx"; Name = "acceptance.docx" },
+        @{ Format = "PDF";  Source = "evaluation\fixtures\F01_simple_text.pdf"; Name = "acceptance.pdf" },
+        @{ Format = "PPTX"; Source = "evaluation\fixtures\F09_slides.pptx"; Name = "acceptance.pptx" },
+        @{ Format = "XLSX"; Source = "evaluation\fixtures\F10_sheets.xlsx"; Name = "acceptance.xlsx" }
+    )
+
+    foreach ($fixture in $fixtureMap) {
+        $source = Join-Path $repoRoot $fixture.Source
+        if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
+            throw "Required public fixture is missing: $source"
+        }
+        $destination = Join-Path $sourceRoot $fixture.Name
+        Copy-Item -LiteralPath $source -Destination $destination
+        $fixtureEvidence += [ordered]@{
+            format = $fixture.Format
+            file = $fixture.Name
+            role = "built_in"
+            sha256 = Get-Sha256 $destination
+        }
+    }
+
+    $txtPath = Join-Path $sourceRoot "acceptance.txt"
+    [System.IO.File]::WriteAllText($txtPath, "# Zlet packaged acceptance`r`n`r`nDeterministic local TXT fixture.`r`n", [System.Text.UTF8Encoding]::new($false))
+    $fixtureEvidence += [ordered]@{ format = "TXT"; file = "acceptance.txt"; role = "built_in"; sha256 = Get-Sha256 $txtPath }
+}
 
 $os = Get-CimInstance Win32_OperatingSystem
 $appVersion = (Get-Item -LiteralPath $exe).VersionInfo.FileVersion
@@ -79,7 +160,7 @@ $processArgs = @(
     "--source", ('"{0}"' -f $sourceRoot),
     "--destination", ('"{0}"' -f $outputRoot),
     "--target", "markdown",
-    "--recursive", "false",
+    "--recursive", ($(if ($recursive) { "true" } else { "false" })),
     "--report-json", ('"{0}"' -f $reportPath)
 )
 $process = Start-Process -FilePath $exe -ArgumentList $processArgs -Wait -PassThru -NoNewWindow
@@ -88,8 +169,10 @@ $exitCode = $process.ExitCode
 $results = @()
 $overallPass = $true
 foreach ($fixture in $fixtureEvidence) {
-    $stem = [System.IO.Path]::GetFileNameWithoutExtension($fixture.file)
-    $markdown = Join-Path $outputRoot ($stem + ".md")
+    $relativeDirectory = [System.IO.Path]::GetDirectoryName([string]$fixture.file)
+    $stem = [System.IO.Path]::GetFileNameWithoutExtension([string]$fixture.file)
+    $markdownName = $stem + ".md"
+    $markdown = if ([string]::IsNullOrWhiteSpace($relativeDirectory)) { Join-Path $outputRoot $markdownName } else { Join-Path (Join-Path $outputRoot $relativeDirectory) $markdownName }
     $reasons = @()
 
     if (-not (Test-Path -LiteralPath $markdown -PathType Leaf)) {
@@ -146,7 +229,8 @@ $evidence = [ordered]@{
         architecture = $env:PROCESSOR_ARCHITECTURE
         powershell = $PSVersionTable.PSVersion.ToString()
     }
-    invocation = "ZletConverter.exe batch --target markdown --recursive false"
+    testSetMode = $testSetMode
+    invocation = ("ZletConverter.exe batch --target markdown --recursive {0}" -f ($(if ($recursive) { "true" } else { "false" })))
     converterExitCode = $exitCode
     converterReport = if (Test-Path -LiteralPath $reportPath) { "conversion-report.json" } else { $null }
     fixtures = $fixtureEvidence
