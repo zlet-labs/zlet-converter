@@ -47,6 +47,10 @@ jobs:
       - name: Test
         run: dotnet test FolderConverter.sln -c Release --no-build --logger "trx;LogFileName=test-results.trx"
 
+      - name: Test packaged acceptance report mapping
+        shell: powershell
+        run: powershell -ExecutionPolicy Bypass -File scripts/test-packaged-acceptance-mapping.ps1
+
       - name: Verify portable package and Rust third-party notices
         if: github.event_name != 'pull_request'
         shell: powershell
