@@ -78,7 +78,7 @@ git archive "$COMMIT" | tar -x -C "$SRC"
   cargo build --manifest-path src/Zlet.FolderConverter.AnydocWorker/Cargo.toml --release --locked
   dotnet publish src/Zlet.FolderConverter.Cli/Zlet.FolderConverter.Cli.csproj \
     -c Release -r linux-x64 --self-contained true -o "$RUNTIME_DIR"
-  cp target/release/zlet-anydoc-worker "$RUNTIME_DIR/zlet-anydoc-worker"
+  cp src/Zlet.FolderConverter.AnydocWorker/target/release/zlet-anydoc-worker "$RUNTIME_DIR/zlet-anydoc-worker"
   chmod +x "$RUNTIME_DIR/zlet-converter" "$RUNTIME_DIR/zlet-anydoc-worker"
 ) >"$RUN_DIR/build.log" 2>&1
 
