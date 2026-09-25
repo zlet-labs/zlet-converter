@@ -102,14 +102,17 @@ while IFS= read -r -d '' input; do
   fi
   ext="${rel##*.}"
   key="$(printf '%s' "$rel" | sha256sum | cut -c1-16)"
-  out_dir="$WORK_DIR/out-$key"
+  case_dir="$WORK_DIR/case-$key"
+  case_source="$case_dir/source"
+  out_dir="$case_dir/out"
   report="$RUN_DIR/reports/$key.json"
   log="$RUN_DIR/logs/$key.log"
-  mkdir -p "$out_dir"
+  mkdir -p "$case_source" "$out_dir"
+  cp "$input" "$case_source/$(basename "$input")"
   start_ns="$(date +%s%N)"
   set +e
   "$RUNTIME_DIR/zlet-converter" batch \
-    --source "$(dirname "$input")" \
+    --source "$case_source" \
     --destination "$out_dir" \
     --target markdown \
     --recursive false \
@@ -143,6 +146,9 @@ payload = {
         "platform": platform.platform(),
         "machine": platform.machine(),
         "python": platform.python_version(),
+        "dotnet": subprocess.check_output(["dotnet", "--version"], text=True).strip(),
+        "cargo": subprocess.check_output(["cargo", "--version"], text=True).strip(),
+        "rustc": subprocess.check_output(["rustc", "--version"], text=True).strip(),
     },
     "filesAttempted": len(rows),
     "commandFailures": sum(int(r["exit_code"]) != 0 for r in rows),
