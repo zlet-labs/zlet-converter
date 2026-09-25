@@ -249,7 +249,7 @@ public static class OutputPathGuard
     private static bool ContainsTraversal(string relativePath)
     {
         var components = relativePath.Split(
-            [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
+            new char[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar },
             StringSplitOptions.RemoveEmptyEntries);
         return components.Any(component => component is "." or "..");
     }
