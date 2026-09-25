@@ -56,7 +56,8 @@ BUILD_DIR="$BUILD_ROOT/$COMMIT"
 RUNTIME_DIR="$BUILD_DIR/linux-x64"
 WORK_DIR="$(mktemp -d)"
 CORPUS_DIR="$WORK_DIR/corpus"
-mkdir -p "$RUN_DIR" "$BUILD_DIR" "$CORPUS_DIR"
+SRC="$WORK_DIR/source"
+mkdir -p "$RUN_DIR" "$BUILD_DIR" "$CORPUS_DIR" "$SRC"
 
 cleanup() { rm -rf "$WORK_DIR"; }
 trap cleanup EXIT
@@ -70,11 +71,7 @@ else
   esac
 fi
 
-git archive "$COMMIT" | tar -x -C "$WORK_DIR"
-SRC="$WORK_DIR/src"
-mkdir -p "$SRC"
-# git archive extracted at WORK_DIR root; isolate it without touching the checkout.
-find "$WORK_DIR" -mindepth 1 -maxdepth 1 ! -name corpus ! -name src -exec mv {} "$SRC"/ \;
+git archive "$COMMIT" | tar -x -C "$SRC"
 
 (
   cd "$SRC"
