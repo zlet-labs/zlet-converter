@@ -38,7 +38,11 @@ Manifest schema:
 }
 ```
 
-The archive is cached under LocalAppData by pack identity. It is reused only when its SHA-256 still matches. A mismatched download fails before acceptance starts.
+The archive is cached under LocalAppData by pack identity **and SHA-256**, so a verified cache entry is immutable. A cached hash mismatch is treated as corruption and fails instead of silently replacing that entry. A mismatched download fails before any conversion starts.
+
+After verification the pack is extracted into the run evidence directory and passed to the same `test-packaged-windows.ps1` acceptance logic using `-TestSetPath`. The built-in packaged acceptance still runs first; an external pack adds coverage and never replaces or weakens the built-in assertions. Packs may include their own `manifest.json` to select supported acceptance fixtures and verify per-file hashes.
+
+A branch-like `-GitRef` is resolved against the freshly fetched `origin/<ref>` and then checked out by exact commit SHA. Literal commit/tag refs remain supported. This prevents a stale local `main` from being mistaken for current remote `main`.
 
 Each run writes a timestamped evidence directory plus ZIP containing `runner-report.json`, logs, the downloaded manifest when used, and the existing packaged-acceptance evidence.
 

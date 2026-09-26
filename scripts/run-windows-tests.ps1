@@ -38,8 +38,22 @@ $packageRecord = $null
 
 try {
     Invoke-Logged "git-fetch" { git -C $repoRoot fetch --tags --prune origin } $logs
-    Invoke-Logged "git-checkout" { git -C $repoRoot checkout --detach $GitRef } $logs
-    $commit = (& git -C $repoRoot rev-parse HEAD).Trim()
+
+    # Resolve a branch name against the freshly fetched origin first. This avoids
+    # silently accepting a stale local branch such as `main`.
+    $remoteRef = "refs/remotes/origin/$GitRef"
+    & git -C $repoRoot show-ref --verify --quiet $remoteRef
+    if ($LASTEXITCODE -eq 0) {
+        $commit = (& git -C $repoRoot rev-parse "$remoteRef^{commit}").Trim()
+    }
+    else {
+        $resolvedCommit = @(& git -C $repoRoot rev-parse "$GitRef^{commit}" 2>$null)
+        if ($LASTEXITCODE -ne 0 -or $resolvedCommit.Count -eq 0) { throw "Git ref could not be resolved after fetch: $GitRef" }
+        $commit = ([string]$resolvedCommit[0]).Trim()
+    }
+    Invoke-Logged "git-checkout" { git -C $repoRoot checkout --detach $commit } $logs
+    $checkedOutCommit = (& git -C $repoRoot rev-parse HEAD).Trim()
+    if ($checkedOutCommit -ne $commit) { throw "Checked-out commit does not match resolved git ref." }
 
     if ($Mode -ne "Acceptance" -and -not $PackagePath) {
         Invoke-Logged "restore" { dotnet restore (Join-Path $repoRoot "FolderConverter.sln") } $logs
@@ -74,19 +88,42 @@ try {
             if (-not $manifest.$required) { throw "Test-pack manifest is missing '$required'." }
         }
         $safeId = ($manifest.id -replace '[^A-Za-z0-9._-]', '_')
-        $archive = Join-Path $TestPackCache "$safeId.zip"
         $expected = ([string]$manifest.sha256).ToLowerInvariant()
-        $validCache = (Test-Path $archive) -and ((Get-FileSha256 $archive) -eq $expected)
-        if (-not $validCache) {
-            Invoke-WebRequest -UseBasicParsing -Uri $manifest.archiveUrl -OutFile "$archive.part"
-            $actual = Get-FileSha256 "$archive.part"
-            if ($actual -ne $expected) {
-                Remove-Item -Force "$archive.part"
-                throw "Test-pack SHA-256 mismatch. Expected $expected, got $actual."
+        if ($expected -notmatch '^[0-9a-f]{64}$') { throw "Test-pack manifest has an invalid SHA-256 value." }
+        $packKey = "$safeId-$expected"
+        $archive = Join-Path $TestPackCache "$packKey.zip"
+        $validCache = Test-Path -LiteralPath $archive -PathType Leaf
+        if ($validCache) {
+            $cachedHash = Get-FileSha256 $archive
+            if ($cachedHash -ne $expected) {
+                throw "Immutable cached test-pack hash mismatch for $archive. Expected $expected, got $cachedHash."
             }
-            Move-Item -Force "$archive.part" $archive
         }
-        $packRecord = [ordered]@{ id=$manifest.id; archive=$archive; sha256=$expected; cacheHit=$validCache; manifestUrl=$TestPackManifestUrl }
+        else {
+            $part = Join-Path $TestPackCache ("$packKey." + [guid]::NewGuid().ToString("N") + ".part")
+            try {
+                Invoke-WebRequest -UseBasicParsing -Uri $manifest.archiveUrl -OutFile $part
+                $actual = Get-FileSha256 $part
+                if ($actual -ne $expected) {
+                    throw "Test-pack SHA-256 mismatch. Expected $expected, got $actual."
+                }
+                Move-Item -LiteralPath $part -Destination $archive
+            }
+            finally {
+                if (Test-Path -LiteralPath $part) { Remove-Item -Force -LiteralPath $part }
+            }
+        }
+
+        $packExtractRoot = Join-Path $evidence "test-pack"
+        Expand-Archive -LiteralPath $archive -DestinationPath $packExtractRoot -Force
+        $packEntries = @(Get-ChildItem -LiteralPath $packExtractRoot)
+        if ($packEntries.Count -eq 1 -and $packEntries[0].PSIsContainer) {
+            $packTestRoot = $packEntries[0].FullName
+        }
+        else {
+            $packTestRoot = $packExtractRoot
+        }
+        $packRecord = [ordered]@{ id=$manifest.id; archive=$archive; sha256=$expected; cacheHit=$validCache; manifestUrl=$TestPackManifestUrl; extractedPath=$packTestRoot }
         Copy-Item $manifestTemp (Join-Path $evidence "test-pack-manifest.json")
         Remove-Item -Force $manifestTemp
     }
@@ -96,6 +133,12 @@ try {
         Invoke-Logged "packaged-acceptance" {
             powershell -ExecutionPolicy Bypass -File (Join-Path $repoRoot "scripts\test-packaged-windows.ps1") -PackagePath $PackagePath -CommitSha $commit -EvidencePath (Join-Path $evidence "packaged-acceptance")
         } $logs
+
+        if ($packRecord) {
+            Invoke-Logged "test-pack-acceptance" {
+                powershell -ExecutionPolicy Bypass -File (Join-Path $repoRoot "scripts\test-packaged-windows.ps1") -PackagePath $PackagePath -CommitSha $commit -TestSetPath $packTestRoot -EvidencePath (Join-Path $evidence "test-pack-acceptance")
+            } $logs
+        }
     }
 
     $status = "PASS"
