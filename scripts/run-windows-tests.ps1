@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [string]$GitRef = "main",
     [ValidateSet("Full","Acceptance","BuildOnly")]
@@ -16,8 +16,16 @@ function Invoke-Logged {
     param([string]$Name, [scriptblock]$Command, [string]$LogDirectory)
     $stdout = Join-Path $LogDirectory "$Name.stdout.log"
     $stderr = Join-Path $LogDirectory "$Name.stderr.log"
-    & $Command 1> $stdout 2> $stderr
-    if ($LASTEXITCODE -ne 0) { throw "$Name failed with exit code $LASTEXITCODE" }
+    $previousErrorActionPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = "Continue"
+        & $Command 1> $stdout 2> $stderr
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+    if ($exitCode -ne 0) { throw "$Name failed with exit code $exitCode" }
 }
 
 function Get-FileSha256([string]$Path) {
