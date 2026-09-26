@@ -362,7 +362,7 @@ internal sealed class SafeFileOperationExecutor
 
         var root = Path.GetFullPath(operation.SourcePath);
         var components = operation.RelativePath.Split(
-            [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
+            new char[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar },
             StringSplitOptions.RemoveEmptyEntries);
         for (var index = 0; index < components.Length; index++)
         {
