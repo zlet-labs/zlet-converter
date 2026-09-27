@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$PackagePath,
 
-    [string]$RepositoryRoot = (Split-Path -Parent $PSScriptRoot),
+    [string]$RepositoryRoot,
 
     [string]$EvidencePath = (Join-Path (Get-Location) "zlet-acceptance-evidence"),
 
@@ -14,6 +14,10 @@ param(
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
+
+if (-not $RepositoryRoot) {
+    $RepositoryRoot = Split-Path -Parent $PSScriptRoot
+}
 Import-Module (Join-Path $PSScriptRoot "PackagedAcceptanceMapping.psm1") -Force
 
 function Get-Sha256([string]$Path) {
