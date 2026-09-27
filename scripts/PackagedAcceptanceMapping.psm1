@@ -2,7 +2,7 @@ Set-StrictMode -Version Latest
 
 function ConvertTo-ZletRelativeKey([string]$Path) {
     if ([string]::IsNullOrWhiteSpace($Path)) { return $null }
-    return ($Path.Replace('\\', '/').TrimStart('/')).ToLowerInvariant()
+    return ($Path.Replace('\', '/').TrimStart('/')).ToLowerInvariant()
 }
 
 function Resolve-ZletReportedArtifact {
