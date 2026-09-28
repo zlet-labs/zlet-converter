@@ -15,6 +15,24 @@ Microsoft .NET notices and license information:
 Microsoft Office is not redistributed. The application automates a separately
 installed local copy when the user selects a matching legacy format.
 
+
+## Quality Core .NET dependencies
+
+Zlet Converter embeds the qualified `Zlet.Quality.Core` .NET library. The
+following managed dependencies are redistributed through the product publish
+output:
+
+- **AngleSharp 1.8.2** — MIT — https://github.com/AngleSharp/AngleSharp
+- **DocumentFormat.OpenXml 3.5.1** — MIT — https://github.com/dotnet/Open-XML-SDK
+- **DocumentFormat.OpenXml.Framework 3.5.1** — MIT — https://github.com/dotnet/Open-XML-SDK
+- **Markdig 1.3.2** — BSD-2-Clause — https://github.com/xoofx/markdig
+- **PdfPig 0.1.16** — Apache-2.0 — https://github.com/UglyToad/PdfPig
+- **System.IO.Packaging 8.0.1** — MIT — https://github.com/dotnet/runtime
+
+These dependencies are ordinary in-process .NET libraries. They do not add
+Python, Docker, external converter runtimes, network services, or external LLM
+dependencies to Zlet Converter.
+
 ## anydoc and Rust dependencies
 
 - **Component:** anydoc

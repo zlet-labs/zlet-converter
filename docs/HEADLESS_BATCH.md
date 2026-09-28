@@ -35,7 +35,7 @@ Linux CI/regression evidence answers a different question from packaged Windows 
 
 ## Evidence behavior
 
-The JSON report uses schema `zlet-converter-headless-report/v1` and records:
+The JSON report uses schema `zlet-converter-headless-report/v2` and records:
 
 - product/version identity;
 - requested target and recursive mode;

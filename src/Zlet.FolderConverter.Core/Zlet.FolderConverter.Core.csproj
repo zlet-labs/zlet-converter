@@ -1,9 +1,18 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\\Zlet.Quality.Core\\Zlet.Quality.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\quality-core-handoff\v0.1\qualification.json"
+                      LogicalName="Zlet.FolderConverter.QualityHandoff.v0_1.qualification.json" />
+  </ItemGroup>
 
 </Project>

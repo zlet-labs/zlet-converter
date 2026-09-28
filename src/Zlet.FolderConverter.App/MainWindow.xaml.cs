@@ -27,7 +27,7 @@ public partial class MainWindow : Window
         _viewModel = new MainWindowViewModel(
             new FileSystemFolderScanner(),
             new ConversionPlanner(resolver),
-            new ConversionProcessor(resolver),
+            new ConversionProcessor(resolver, new EmbeddedConversionQualityEvaluator()),
             capabilityDetector);
         _viewModel.PropertyChanged += (_, args) =>
         {
