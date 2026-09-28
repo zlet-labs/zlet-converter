@@ -1,10 +1,8 @@
 name: CI
 
+# Automatic GitHub-hosted CI is intentionally disabled.
+# Routine validation runs on the Miami host; use this workflow only manually.
 on:
-  pull_request:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 permissions:
