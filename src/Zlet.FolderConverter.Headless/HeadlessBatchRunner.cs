@@ -12,7 +12,7 @@ public sealed class HeadlessBatchConfigurationException(string message) : Except
 
 public sealed class HeadlessBatchRunner
 {
-    public const string ReportSchemaVersion = "zlet-converter-headless-report/v1";
+    public const string ReportSchemaVersion = "zlet-converter-headless-report/v2";
 
     private readonly IFolderScanner _scanner;
     private readonly IConversionPlanner _planner;
@@ -34,7 +34,7 @@ public sealed class HeadlessBatchRunner
         return new HeadlessBatchRunner(
             new FileSystemFolderScanner(),
             new ConversionPlanner(resolver),
-            new ConversionProcessor(resolver));
+            new ConversionProcessor(resolver, new EmbeddedConversionQualityEvaluator()));
     }
 
     public async Task<int> RunAsync(
@@ -162,7 +162,8 @@ public sealed class HeadlessBatchRunner
                 afterHash.Sha256,
                 sourceIntegrity,
                 artifactIntegrity,
-                artifacts));
+                artifacts,
+                result?.Quality));
         }
 
         stopwatch.Stop();
@@ -375,7 +376,8 @@ public sealed record HeadlessBatchItem(
     string? SourceSha256After,
     string SourceIntegrity,
     string ArtifactIntegrity,
-    IReadOnlyList<HeadlessDerivedArtifact> Artifacts);
+    IReadOnlyList<HeadlessDerivedArtifact> Artifacts,
+    ConversionQualityAssessment? Quality);
 
 public sealed record HeadlessDerivedArtifact(
     string Kind,

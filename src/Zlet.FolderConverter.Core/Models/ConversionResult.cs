@@ -6,4 +6,5 @@ public sealed record ConversionResult(
     string Message,
     ConversionDiagnostic? Diagnostic = null,
     string? CompanionDirectoryPath = null,
-    IReadOnlyList<string>? CompanionFiles = null);
+    IReadOnlyList<string>? CompanionFiles = null,
+    ConversionQualityAssessment? Quality = null);

@@ -1,0 +1,87 @@
+{
+  "profileId": "zlet-converter-quality-handoff/0.1",
+  "qualityCoreVersion": "0.1.0",
+  "evaluationApiVersion": "zlet-quality-core-api/0.1",
+  "comparator": "zlet-exact-quality-comparator/0.4.0",
+  "metrics": "conversion-fidelity/0.4.0",
+  "cqs": "zlet-cqs/0.3.0",
+  "productCqsStatus": "DIAGNOSTIC_ONLY_NOT_QUALIFIED_FOR_PRODUCT_ACCEPTANCE",
+  "formats": {
+    "txt": {
+      "status": "QUALIFIED_BOUNDED",
+      "metrics": [
+        "text_recall",
+        "text_precision",
+        "duplicate_or_extra_content_count",
+        "output_nonempty",
+        "content_token_length_ratio",
+        "pairwise_order_accuracy",
+        "order_anchor_coverage",
+        "evaluation_coverage_exact"
+      ],
+      "findings": ["EMPTY_OUTPUT", "EXTRA_OR_DUPLICATED_CONTENT"]
+    },
+    "docx": {
+      "status": "QUALIFIED_BOUNDED",
+      "metrics": [
+        "text_recall",
+        "heading_recall",
+        "heading_level_accuracy",
+        "list_item_recall",
+        "list_level_accuracy",
+        "table_cell_recall",
+        "table_cell_position_accuracy",
+        "pairwise_order_accuracy",
+        "order_anchor_coverage",
+        "output_nonempty",
+        "evaluation_coverage_exact"
+      ],
+      "findings": ["EMPTY_OUTPUT", "MISSING_HEADING", "MISSING_LIST_ITEM", "MISSING_TABLE_CELL"]
+    },
+    "pptx": {
+      "status": "QUALIFIED_BOUNDED",
+      "metrics": [
+        "text_recall",
+        "heading_recall",
+        "heading_level_accuracy",
+        "list_item_recall",
+        "list_level_accuracy",
+        "output_nonempty",
+        "evaluation_coverage_exact"
+      ],
+      "findings": ["EMPTY_OUTPUT", "MISSING_HEADING", "MISSING_LIST_ITEM"]
+    },
+    "xlsx": {
+      "status": "QUALIFIED_BOUNDED",
+      "metrics": [
+        "text_recall",
+        "table_cell_recall",
+        "table_cell_position_accuracy",
+        "pairwise_order_accuracy",
+        "order_anchor_coverage",
+        "output_nonempty",
+        "evaluation_coverage_exact"
+      ],
+      "findings": ["EMPTY_OUTPUT", "MISSING_TABLE_CELL"]
+    },
+    "pdf": {
+      "status": "COVERAGE_ONLY",
+      "metrics": ["evaluation_coverage_exact"],
+      "findings": []
+    },
+    "html": {
+      "status": "NOT_IN_ZLET_CONVERTER_V0_1_ROUTE",
+      "metrics": [],
+      "findings": []
+    }
+  },
+  "limitations": [
+    "CQS is not qualified as a product acceptance verdict in handoff v0.1.",
+    "PDF exact semantic fidelity is NOT_EVALUATED under current inferred SourceFacts.",
+    "DOCX table precision/header-role semantics are not product-qualified.",
+    "XLSX precision/noise is not product-qualified because worksheet-name metadata is outside current SourceFacts and numeric display equivalence is not modeled.",
+    "Repeated identical structure pairing remains ambiguous.",
+    "Image checks remain count-only and are not included in the product-qualified v0.1 subset.",
+    "Markdown health/parseability is not part of the current Integrity guard."
+  ]
+}

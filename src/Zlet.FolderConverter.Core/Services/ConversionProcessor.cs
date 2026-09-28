@@ -2,8 +2,18 @@ using Zlet.FolderConverter.Core.Models;
 
 namespace Zlet.FolderConverter.Core.Services;
 
-public sealed class ConversionProcessor(IConversionAdapterResolver adapterResolver) : IConversionProcessor
+public sealed class ConversionProcessor : IConversionProcessor
 {
+    private readonly IConversionAdapterResolver _adapterResolver;
+    private readonly IConversionQualityEvaluator? _qualityEvaluator;
+
+    public ConversionProcessor(
+        IConversionAdapterResolver adapterResolver,
+        IConversionQualityEvaluator? qualityEvaluator = null)
+    {
+        _adapterResolver = adapterResolver ?? throw new ArgumentNullException(nameof(adapterResolver));
+        _qualityEvaluator = qualityEvaluator;
+    }
     public async Task<ConversionSummary> ProcessAsync(
         IReadOnlyList<PlannedOperation> operations,
         IProgress<ConversionProgress>? progress,
@@ -12,7 +22,7 @@ public sealed class ConversionProcessor(IConversionAdapterResolver adapterResolv
         var results = new List<ConversionResult>(operations.Count);
         var readyTotal = operations.Count(operation => operation.Status == OperationStatus.Ready);
         var completedReady = 0;
-        var batchLifecycle = adapterResolver as IConversionBatchLifecycle;
+        var batchLifecycle = _adapterResolver as IConversionBatchLifecycle;
 
         if (batchLifecycle is not null)
         {
@@ -39,7 +49,7 @@ public sealed class ConversionProcessor(IConversionAdapterResolver adapterResolv
                 int? operationPercent = null;
 
                 ConversionResult result;
-                var adapter = adapterResolver.Resolve(operation.SourceFormat, operation.Target);
+                var adapter = _adapterResolver.Resolve(operation.SourceFormat, operation.Target);
                 if (adapter?.IsAvailable != true)
                 {
                     result = new ConversionResult(
@@ -94,6 +104,31 @@ public sealed class ConversionProcessor(IConversionAdapterResolver adapterResolv
                             OperationStatus.Failed,
                             "Не удалось обработать файл.",
                             new ConversionDiagnostic("unexpected_adapter_failure"));
+                    }
+                }
+
+                if (result.Status == OperationStatus.Succeeded
+                    && result.Operation.Target == ConversionTarget.Markdown
+                    && _qualityEvaluator is not null)
+                {
+                    try
+                    {
+                        var quality = await _qualityEvaluator.EvaluateAsync(
+                            result.Operation,
+                            cancellationToken).ConfigureAwait(false);
+                        result = result with { Quality = quality };
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        throw;
+                    }
+                    catch
+                    {
+                        result = result with
+                        {
+                            Quality = EmbeddedConversionQualityEvaluator.InternalError(
+                                "NOT_EVALUATED_PRODUCT_INTEGRATION")
+                        };
                     }
                 }
 

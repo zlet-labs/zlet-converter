@@ -1,0 +1,138 @@
+{
+  "comparator": "zlet-exact-quality-comparator/0.4.0",
+  "cqs": "zlet-cqs/0.3.0",
+  "evaluationApiVersion": "zlet-quality-core-api/0.1",
+  "files": [
+    {
+      "path": "HANDOFF.md",
+      "sha256": "8a54206c330fbde1ccebd95d934e9502320726d6c28b27f5607654bd9f1af684",
+      "sizeBytes": 4715
+    },
+    {
+      "path": "qualification.json",
+      "sha256": "0efc32c38cde207d31187a63a030ad4653f4be8b2d125ca72d8bb3bcd13ad293",
+      "sizeBytes": 2941
+    },
+    {
+      "path": "src/Zlet.Quality.Core/CorpusScoreProjection.cs",
+      "sha256": "5ea1ad440abe2b56131a073298580bc7ec901202f27371fc65e84992710b6519",
+      "sizeBytes": 11293
+    },
+    {
+      "path": "src/Zlet.Quality.Core/DocxSourceInspector.cs",
+      "sha256": "d7cea4164a24795c962819cc8ff00cddfba87ef63f0aa62a9df67000641bf56c",
+      "sizeBytes": 21037
+    },
+    {
+      "path": "src/Zlet.Quality.Core/ExactQualityComparator.cs",
+      "sha256": "88dd6f2e0b2e0a652f6b8536cc0552f8d56597fdf670c92dd0d040ef616d0d30",
+      "sizeBytes": 31825
+    },
+    {
+      "path": "src/Zlet.Quality.Core/FactsContracts.cs",
+      "sha256": "9a057a59cae7e43175f695270137048aed6461db220d61397384622fe614770a",
+      "sizeBytes": 2163
+    },
+    {
+      "path": "src/Zlet.Quality.Core/HtmlSourceInspector.cs",
+      "sha256": "396a1e1762b930e5aa5b1a7c4d1c35950000f059d3b76222b14cb81ccb95f4fa",
+      "sizeBytes": 9291
+    },
+    {
+      "path": "src/Zlet.Quality.Core/MarkdigMarkdownInspector.cs",
+      "sha256": "45b67aba2a6644da3df18ce2d22c2dca83f78b85110eeafc91a4dcf5e6f749c1",
+      "sizeBytes": 11754
+    },
+    {
+      "path": "src/Zlet.Quality.Core/MarkdownInspection.cs",
+      "sha256": "ff7e30255023896780280675ec43efb3ccff4efa0fd41d8381ec38612470ed52",
+      "sizeBytes": 313
+    },
+    {
+      "path": "src/Zlet.Quality.Core/Models.cs",
+      "sha256": "5b23bf6280fba2d9b903287dbe10f6ea1a4cd503c31753c70d84e1cd274dec07",
+      "sizeBytes": 1813
+    },
+    {
+      "path": "src/Zlet.Quality.Core/PdfSourceInspector.cs",
+      "sha256": "9d6ee13648f6f5639c1391799a30fde51f687f96244963ff9575f728a8b3d0a8",
+      "sizeBytes": 2690
+    },
+    {
+      "path": "src/Zlet.Quality.Core/PptxSourceInspector.cs",
+      "sha256": "3336503510befcbf8de625235972df0245de9e60691d06ebe1d04c80c9df554c",
+      "sizeBytes": 6377
+    },
+    {
+      "path": "src/Zlet.Quality.Core/QualityComparison.cs",
+      "sha256": "ec5ca8091fb692c39d239ea7807f8b9f821873323c3754a815a1fe15308dd862",
+      "sizeBytes": 945
+    },
+    {
+      "path": "src/Zlet.Quality.Core/QualityCoreVersion.cs",
+      "sha256": "cde83e4f687a8dd07b6f9507ca89afe6abb9a9eb99ebcd8b4b3b105fde131af4",
+      "sizeBytes": 587
+    },
+    {
+      "path": "src/Zlet.Quality.Core/QualityEvaluationService.cs",
+      "sha256": "0d362a952b7aa8ba1faef13ff457fa4d60ee216192a7f1ce35a6266e7dfaaf8a",
+      "sizeBytes": 7715
+    },
+    {
+      "path": "src/Zlet.Quality.Core/QualityJson.cs",
+      "sha256": "bba699211cb27cac2737809df2be5e1a92f79c22687a48c31eecf269a1fa32d0",
+      "sizeBytes": 821
+    },
+    {
+      "path": "src/Zlet.Quality.Core/QualityRunService.cs",
+      "sha256": "01734a3ded3e81ec4e1b82868c0879fd9f9eafd41ed93a3fac8cd69ecbe77700",
+      "sizeBytes": 12073
+    },
+    {
+      "path": "src/Zlet.Quality.Core/QualityRunVerifier.cs",
+      "sha256": "84c73a4dcb821703ec15d0e80cd17ce78be4e2b79a6a713a23a8ec90930adadf",
+      "sizeBytes": 4775
+    },
+    {
+      "path": "src/Zlet.Quality.Core/QualityScore.cs",
+      "sha256": "8fe77f307e5f31084c16917e6896d19a77d3c82353ed5afd123cd41c5faa8ec7",
+      "sizeBytes": 3373
+    },
+    {
+      "path": "src/Zlet.Quality.Core/QualityScoreMethodology.cs",
+      "sha256": "e972aa54f31825fd71b59f3e9fd38a4e8c9af968a44d7d06e52e1d11cf8f5b2b",
+      "sizeBytes": 8726
+    },
+    {
+      "path": "src/Zlet.Quality.Core/QualityScoreProjection.cs",
+      "sha256": "bea239ffe6dd1804a6a5ffc777caec0d80e4729a3108c814eb84bd0444293ba4",
+      "sizeBytes": 8779
+    },
+    {
+      "path": "src/Zlet.Quality.Core/SourceInspection.cs",
+      "sha256": "0a4285787d82cf7e76b4b8c959f3e1111eb96151d1ef3790dfab237ed3cfc29d",
+      "sizeBytes": 305
+    },
+    {
+      "path": "src/Zlet.Quality.Core/TxtSourceInspector.cs",
+      "sha256": "2b07b0fb60e2b4b3c1b6e424ea071c9dd58c54c429dadac573c4fd7add5b7991",
+      "sizeBytes": 2057
+    },
+    {
+      "path": "src/Zlet.Quality.Core/XlsxSourceInspector.cs",
+      "sha256": "2807877630b18bc73098fb99ddc0aa5c8731b0422ccfcff8aea17ab577c323eb",
+      "sizeBytes": 11978
+    },
+    {
+      "path": "src/Zlet.Quality.Core/Zlet.Quality.Core.csproj",
+      "sha256": "eff82b89023c4ad3bed2bc05184efb1e6c6545a5a1b9ff40a7b3b29c2660536f",
+      "sizeBytes": 813
+    }
+  ],
+  "metrics": "conversion-fidelity/0.4.0",
+  "profileId": "zlet-converter-quality-handoff/0.1",
+  "qualityCoreVersion": "0.1.0",
+  "repository": "zlet-labs/zlet-conversion-lab",
+  "schema": "zlet-quality-core-handoff/0.1",
+  "sourceCommit": "02e798f04d2959da6c05ffd8322cfe7466b200e0"
+}
