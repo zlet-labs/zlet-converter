@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.IO;
 using Zlet.FolderConverter.App.Localization;
+using Zlet.FolderConverter.Core.Models;
 
 namespace Zlet.FolderConverter.App.Settings;
 
@@ -95,6 +96,46 @@ public sealed class AppSettingsStore
         {
             return new(false, "settings_write_failed");
         }
+    }
+
+    public QualityCheckPolicy LoadQualityCheckPolicy()
+    {
+        try
+        {
+            if (!File.Exists(SettingsPath)) return QualityCheckPolicy.Default;
+            var root = JsonNode.Parse(File.ReadAllText(SettingsPath)) as JsonObject;
+            var q = root?["qualityCheck"]?.Deserialize<QualityCheckPolicy>();
+            return (q ?? QualityCheckPolicy.Default).Normalize();
+        }
+        catch (Exception exception) when (exception is JsonException or IOException or UnauthorizedAccessException or InvalidOperationException)
+        { return QualityCheckPolicy.Default; }
+    }
+
+    public SettingsSaveResult TrySaveQualityCheckPolicy(QualityCheckPolicy policy)
+    {
+        try
+        {
+            var root = File.Exists(SettingsPath)
+                ? JsonNode.Parse(File.ReadAllText(SettingsPath)) as JsonObject ?? new JsonObject()
+                : new JsonObject();
+            root["qualityCheck"] = JsonSerializer.SerializeToNode(policy.Normalize());
+            var directory = Path.GetDirectoryName(SettingsPath);
+            if (string.IsNullOrWhiteSpace(directory)) return new(false, "invalid_settings_path");
+            Directory.CreateDirectory(directory);
+            var temporaryPath = Path.Combine(directory, $"settings.{Guid.NewGuid():N}.tmp");
+            try
+            {
+                File.WriteAllText(temporaryPath, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+                File.Move(temporaryPath, SettingsPath, true);
+                return SettingsSaveResult.Saved;
+            }
+            finally
+            {
+                try { if (File.Exists(temporaryPath)) File.Delete(temporaryPath); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+            }
+        }
+        catch (Exception exception) when (exception is JsonException or IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        { return new(false, "settings_write_failed"); }
     }
 
 }

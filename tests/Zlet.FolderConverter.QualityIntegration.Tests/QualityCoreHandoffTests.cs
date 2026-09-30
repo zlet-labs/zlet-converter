@@ -39,6 +39,11 @@ public sealed class QualityCoreHandoffTests : IDisposable
         Assert.Equal(1d, Metric(assessment, "text_precision").Value);
         Assert.DoesNotContain(assessment.Metrics, metric => metric.Name == "heading_precision");
         Assert.Empty(assessment.Findings);
+        Assert.NotNull(assessment.Projection);
+        Assert.Equal("zlet-cqs/0.3.0", assessment.Projection!.MethodologyVersion);
+        Assert.Equal("PARTIAL_EVIDENCE", assessment.Projection.Status);
+        Assert.Equal(100d, assessment.Projection.FidelityScore);
+        Assert.Equal(66.7d, assessment.Projection.EvaluationCoverage);
     }
 
     [Fact]
@@ -179,6 +184,7 @@ public sealed class QualityCoreHandoffTests : IDisposable
             CancellationToken.None);
 
         Assert.Equal("COVERAGE_ONLY", assessment.QualificationStatus);
+        Assert.Null(assessment.Projection);
         var coverage = Assert.Single(assessment.Metrics);
         Assert.Equal("evaluation_coverage_exact", coverage.Name);
         Assert.Equal("EVALUATED", coverage.Status);

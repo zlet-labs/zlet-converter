@@ -42,6 +42,7 @@ public partial class SettingsWindow : Window
             _closed.Cancel();
             _client?.Dispose();
         };
+        LoadQualitySettings();
         RefreshText();
         _initialized = true;
     }
@@ -51,6 +52,7 @@ public partial class SettingsWindow : Window
     private void RefreshText()
     {
         VersionText.Text = Localization.Format("SettingsVersion", ProductIdentity.Version);
+        QualityVersionText.Text = Localization.Format("QualityVersionInfo", Zlet.Quality.Core.QualityCoreVersion.Version, EmbeddedConversionQualityEvaluator.QualificationProfileId, Zlet.Quality.Core.QualityScoreMethodology.Version);
         ProductText.Text = $"{ProductIdentity.Name} {ProductIdentity.Version}";
         DiagnosticsBlock.Text = DiagnosticsText.Create(Localization, _office, _doclingAvailable);
         UpdateStatus.Text = Localization.Format(_update.ResourceKey, _update.Release?.Version.ToString() ?? ProductIdentity.Version);
@@ -114,4 +116,25 @@ public partial class SettingsWindow : Window
         { _browserKey = "BrowserFailed"; }
         RefreshText();
     }
+    private void LoadQualitySettings()
+    {
+        var q = _store.LoadQualityCheckPolicy();
+        QualityEnabled.IsChecked = q.Enabled; QualityShowAfter.IsChecked = q.ShowAfterConversion; QualityDetails.IsChecked = q.ShowDetailedMetrics;
+        QualityOkThreshold.Text = q.OkThreshold.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+        QualityReviewThreshold.Text = q.ReviewThreshold.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+        QualityCoverageThreshold.Text = q.MinimumCoverageForOk.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    private void QualitySetting_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!_initialized) return;
+        static double Read(System.Windows.Controls.TextBox box, double fallback) => double.TryParse(box.Text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var value) ? value : fallback;
+        var old = _store.LoadQualityCheckPolicy();
+        var q = new QualityCheckPolicy(QualityEnabled.IsChecked == true, QualityShowAfter.IsChecked == true, Read(QualityOkThreshold, old.OkThreshold), Read(QualityReviewThreshold, old.ReviewThreshold), Read(QualityCoverageThreshold, old.MinimumCoverageForOk), QualityDetails.IsChecked == true).Normalize();
+        var result = _store.TrySaveQualityCheckPolicy(q);
+        if (result.Success) QualityPolicyRuntime.Apply(q);
+        SaveErrorText.Visibility = result.Success ? Visibility.Collapsed : Visibility.Visible;
+        LoadQualitySettings();
+    }
+
 }

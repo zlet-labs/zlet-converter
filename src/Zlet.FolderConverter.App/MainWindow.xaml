@@ -718,6 +718,11 @@
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="{DynamicResource QualityHeader}" Width="110" MinWidth="80">
+                                        <DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                            <TextBlock Text="{Binding QualityStatus}" ToolTip="{Binding QualitySummary}" VerticalAlignment="Center"/>
+                                        </DataTemplate></DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
                                     <DataGridTemplateColumn Header="{DynamicResource Result}"
                                                             Width="1.2*"
                                                             MinWidth="50"
