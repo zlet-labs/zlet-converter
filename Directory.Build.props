@@ -1,12 +1,13 @@
 <Project>
   <PropertyGroup>
     <ZletProductName>Zlet Converter</ZletProductName>
-    <ZletProductVersion>0.1.0</ZletProductVersion>
+    <ZletProductVersion>0.2.0-alpha</ZletProductVersion>
+    <ZletAssemblyVersion>0.2.0.0</ZletAssemblyVersion>
     <ZletExecutableName>ZletConverter</ZletExecutableName>
     <ZletPortableRuntimeIdentifier>win-x64</ZletPortableRuntimeIdentifier>
     <Version>$(ZletProductVersion)</Version>
-    <AssemblyVersion>$(ZletProductVersion).0</AssemblyVersion>
-    <FileVersion>$(ZletProductVersion).0</FileVersion>
+    <AssemblyVersion>$(ZletAssemblyVersion)</AssemblyVersion>
+    <FileVersion>$(ZletAssemblyVersion)</FileVersion>
     <InformationalVersion>$(ZletProductVersion)</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <Product>$(ZletProductName)</Product>
