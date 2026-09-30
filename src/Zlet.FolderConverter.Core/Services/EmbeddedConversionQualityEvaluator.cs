@@ -62,6 +62,17 @@ public sealed class EmbeddedConversionQualityEvaluator : IConversionQualityEvalu
                 .ToArray()
                 ?? [];
 
+            ConversionQualityProjection? projection = null;
+            if (profile.Status == "QUALIFIED_BOUNDED" && evaluation.SourceFacts is not null && evaluation.Result is not null)
+            {
+                var candidate = CandidateScoreProjector.Project(evaluation.SourceFacts, evaluation.Result);
+                var applicable = candidate.Dimensions.Where(d => d.Status != "NOT_APPLICABLE").ToArray();
+                projection = new ConversionQualityProjection(
+                    candidate.MethodologyVersion, candidate.Status, candidate.Cqs,
+                    applicable.Length == 0 ? 0d : Math.Round(applicable.Average(d => d.Coverage), 1),
+                    applicable.Select(d => new ConversionQualityDimension(d.Dimension, d.Status, d.Score, d.Coverage)).ToArray());
+            }
+
             var pipeline = new ConversionQualityPipeline(
                 evaluation.Pipeline.QualityCoreVersion,
                 evaluation.ApiVersion,
@@ -85,7 +96,8 @@ public sealed class EmbeddedConversionQualityEvaluator : IConversionQualityEvalu
                 evaluation.ComparisonStatus,
                 pipeline,
                 metrics,
-                findings);
+                findings,
+                projection);
         }
         catch (OperationCanceledException)
         {

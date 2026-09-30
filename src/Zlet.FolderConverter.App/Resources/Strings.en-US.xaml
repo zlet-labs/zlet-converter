@@ -143,4 +143,21 @@
   <sys:String x:Key="DocumentUnsupportedFormat">Document format is not supported for Markdown conversion.</sys:String>
   <sys:String x:Key="DocumentSourceNotFound">Source document was not found.</sys:String>
   <sys:String x:Key="DocumentWriteError">Failed to write Markdown result file.</sys:String>
+  <sys:String x:Key="QualityHeader">Quality</sys:String>
+  <sys:String x:Key="QualityOk">OK</sys:String>
+  <sys:String x:Key="QualityReview">Review</sys:String>
+  <sys:String x:Key="QualityFail">Fail</sys:String>
+  <sys:String x:Key="QualityPartial">Partial</sys:String>
+  <sys:String x:Key="QualityCoverageOnly">Coverage only; fidelity is not evaluated.</sys:String>
+  <sys:String x:Key="QualityNotEvaluated">Quality not evaluated.</sys:String>
+  <sys:String x:Key="QualitySummaryFormat">Fidelity {0:0.#}% · evaluated {1:0.#}% · findings {2}</sys:String>
+  <sys:String x:Key="SettingsQuality">Quality Check</sys:String>
+  <sys:String x:Key="QualityEnabledLabel">Enable Quality Check</sys:String>
+  <sys:String x:Key="QualityShowAfterLabel">Show quality after conversion</sys:String>
+  <sys:String x:Key="QualityOkThresholdLabel">OK threshold (%)</sys:String>
+  <sys:String x:Key="QualityReviewThresholdLabel">Review threshold (%)</sys:String>
+  <sys:String x:Key="QualityCoverageThresholdLabel">Minimum evaluation coverage for OK (%)</sys:String>
+  <sys:String x:Key="QualityDetailsLabel">Show detailed quality metrics</sys:String>
+  <sys:String x:Key="QualityVersionInfo">Core: {0} · Profile: {1} · CQS: {2}</sys:String>
+  <sys:String x:Key="QualityHidden">Quality display is disabled in settings.</sys:String>
 </ResourceDictionary>

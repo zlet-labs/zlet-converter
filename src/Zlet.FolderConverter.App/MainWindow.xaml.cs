@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using Forms = System.Windows.Forms;
+using Zlet.FolderConverter.App.Settings;
 using Zlet.FolderConverter.App.ViewModels;
 using Zlet.FolderConverter.App.Localization;
 using Zlet.FolderConverter.Core.Services;
@@ -27,7 +28,7 @@ public partial class MainWindow : Window
         _viewModel = new MainWindowViewModel(
             new FileSystemFolderScanner(),
             new ConversionPlanner(resolver),
-            new ConversionProcessor(resolver, new EmbeddedConversionQualityEvaluator()),
+            new ConversionProcessor(resolver, new SettingsAwareQualityEvaluator()),
             capabilityDetector);
         _viewModel.PropertyChanged += (_, args) =>
         {
@@ -276,8 +277,12 @@ public partial class MainWindow : Window
         }
     }
 
-    private void SettingsButton_Click(object sender, RoutedEventArgs e) =>
+    private void SettingsButton_Click(object sender, RoutedEventArgs e)
+    {
         new SettingsWindow { Owner = this }.ShowDialog();
+        QualityPolicyRuntime.Reload();
+        _viewModel.RefreshLocalization();
+    }
 
     public void ShowSettingsSaveFailure()
     {

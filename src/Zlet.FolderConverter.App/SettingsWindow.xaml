@@ -22,6 +22,14 @@
    <TextBlock x:Name="SaveErrorText" Text="{DynamicResource SettingsSaveFailed}" Foreground="#FF9AAA" Visibility="Collapsed"/>
    <Button Content="{DynamicResource ResetSettings}" Click="Reset_Click"/>
    <TextBlock x:Name="ResetStatus"/>
+   <TextBlock Text="{DynamicResource SettingsQuality}" Style="{StaticResource Section}"/>
+   <CheckBox x:Name="QualityEnabled" Content="{DynamicResource QualityEnabledLabel}" Margin="0,5" Click="QualitySetting_Changed"/>
+   <CheckBox x:Name="QualityShowAfter" Content="{DynamicResource QualityShowAfterLabel}" Margin="0,5" Click="QualitySetting_Changed"/>
+   <TextBlock Text="{DynamicResource QualityOkThresholdLabel}"/><TextBox x:Name="QualityOkThreshold" Width="90" HorizontalAlignment="Left" LostFocus="QualitySetting_Changed"/>
+   <TextBlock Text="{DynamicResource QualityReviewThresholdLabel}"/><TextBox x:Name="QualityReviewThreshold" Width="90" HorizontalAlignment="Left" LostFocus="QualitySetting_Changed"/>
+   <TextBlock Text="{DynamicResource QualityCoverageThresholdLabel}"/><TextBox x:Name="QualityCoverageThreshold" Width="90" HorizontalAlignment="Left" LostFocus="QualitySetting_Changed"/>
+   <CheckBox x:Name="QualityDetails" Content="{DynamicResource QualityDetailsLabel}" Margin="0,5" Click="QualitySetting_Changed"/>
+   <TextBlock x:Name="QualityVersionText" Opacity="0.75"/>
    <TextBlock Text="{DynamicResource SettingsUpdates}" Style="{StaticResource Section}"/>
    <TextBlock x:Name="VersionText"/>
    <TextBlock Text="{DynamicResource UpdateDisclosure}"/>

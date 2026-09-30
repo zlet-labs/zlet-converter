@@ -26,6 +26,10 @@ public sealed record ConversionQualityPipeline(
     string QualityReportSchemaVersion,
     string CqsMethodologyVersion);
 
+public sealed record ConversionQualityDimension(string Name, string Status, double? Score, double Coverage);
+
+public sealed record ConversionQualityProjection(string MethodologyVersion, string Status, double? FidelityScore, double EvaluationCoverage, IReadOnlyList<ConversionQualityDimension> Dimensions);
+
 public sealed record ConversionQualityAssessment(
     string QualificationProfileId,
     string QualificationStatus,
@@ -35,4 +39,5 @@ public sealed record ConversionQualityAssessment(
     string ComparisonStatus,
     ConversionQualityPipeline? Pipeline,
     IReadOnlyList<ConversionQualityMetric> Metrics,
-    IReadOnlyList<ConversionQualityFinding> Findings);
+    IReadOnlyList<ConversionQualityFinding> Findings,
+    ConversionQualityProjection? Projection = null);

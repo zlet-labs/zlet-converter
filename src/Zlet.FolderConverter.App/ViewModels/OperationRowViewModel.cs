@@ -2,6 +2,8 @@ using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
 using Zlet.FolderConverter.App.Localization;
+using Zlet.FolderConverter.App.Settings;
+using Zlet.FolderConverter.Core.Services;
 using Zlet.FolderConverter.Core.Models;
 
 namespace Zlet.FolderConverter.App.ViewModels;
@@ -102,6 +104,30 @@ public sealed class OperationRowViewModel : INotifyPropertyChanged
     public string ExecutionTimeText => ExecutionElapsed is { } elapsed
         ? _localization.FormatExecutionTime(elapsed)
         : "—";
+    private QualityPresentation QualityPresentation => QualityPresentationPolicy.Evaluate(Result?.Quality, QualityPolicyRuntime.Current);
+    public string QualityStatus => !QualityPolicyRuntime.Current.ShowAfterConversion ? "—" : QualityPresentation.Status switch
+    {
+        "OK" => _localization.Get("QualityOk"),
+        "REVIEW" => _localization.Get("QualityReview"),
+        "FAIL" => _localization.Get("QualityFail"),
+        "PARTIAL" => _localization.Get("QualityPartial"),
+        _ => "—"
+    };
+    public string QualitySummary
+    {
+        get
+        {
+            var policy = QualityPolicyRuntime.Current;
+            if (!policy.ShowAfterConversion) return _localization.Get("QualityHidden");
+            var q = QualityPresentation;
+            if (q.Status == "PARTIAL") return _localization.Get("QualityCoverageOnly");
+            if (q.FidelityScore is null) return _localization.Get("QualityNotEvaluated");
+            var summary = _localization.Format("QualitySummaryFormat", q.FidelityScore.Value, q.EvaluationCoverage ?? 0d, Result?.Quality?.Findings.Count ?? 0);
+            if (!policy.ShowDetailedMetrics || Result?.Quality?.Projection is null) return summary;
+            var dimensions = string.Join(" · ", Result.Quality.Projection.Dimensions.Where(d => d.Score is not null).Select(d => $"{d.Name} {d.Score:0.#}%"));
+            return string.IsNullOrWhiteSpace(dimensions) ? summary : summary + Environment.NewLine + dimensions;
+        }
+    }
     public string Status
     {
         get
@@ -222,6 +248,8 @@ public sealed class OperationRowViewModel : INotifyPropertyChanged
         if (_executionStartTimestamp is not long start || _executionElapsed.HasValue) return;
         _liveExecutionElapsed = timeProvider.GetElapsedTime(start, timestamp);
         OnPropertyChanged(nameof(ExecutionTimeText));
+        OnPropertyChanged(nameof(QualityStatus));
+        OnPropertyChanged(nameof(QualitySummary));
     }
 
     public static string LocalizeStatus(
@@ -282,6 +310,8 @@ public sealed class OperationRowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(StatusTone));
         OnPropertyChanged(nameof(Message));
         OnPropertyChanged(nameof(ExecutionTimeText));
+        OnPropertyChanged(nameof(QualityStatus));
+        OnPropertyChanged(nameof(QualitySummary));
     }
 
     public void RefreshLocalization() => OnLanguageChanged(this, EventArgs.Empty);
@@ -293,6 +323,8 @@ public sealed class OperationRowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(ExecutionTimeText));
         OnPropertyChanged(nameof(Status));
         OnPropertyChanged(nameof(Message));
+        OnPropertyChanged(nameof(QualityStatus));
+        OnPropertyChanged(nameof(QualitySummary));
     }
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
