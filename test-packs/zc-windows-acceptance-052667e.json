@@ -1,0 +1,9 @@
+{
+  "id": "zc-windows-acceptance-052667e",
+  "archiveUrl": "https://raw.githubusercontent.com/zlet-labs/zlet-converter/zc-131-windows-test-runner/test-packs/zc-windows-acceptance-052667e.zip",
+  "sha256": "9d9416c61ef5e773ca6717269e3ef13fcecdd7f1c8283389974c3d551bd9a6e1",
+  "source": "zlet-labs/zlet-converter",
+  "sourceCommit": "052667ee8b9be105425b86a88c77f6091c899433",
+  "visibility": "public-fixtures-only",
+  "purpose": "windows-packaged-acceptance"
+}
