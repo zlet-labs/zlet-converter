@@ -54,6 +54,14 @@ jobs:
         shell: powershell
         run: powershell -ExecutionPolicy Bypass -File scripts/publish-portable.ps1
 
+      - name: Upload Windows portable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zlet-converter-windows-x64-${{ github.sha }}
+          path: artifacts/portable/win-x64/*.zip
+          if-no-files-found: error
+          retention-days: 14
+
 
   linux-headless:
     name: Linux headless build and smoke
