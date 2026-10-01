@@ -160,4 +160,12 @@
   <sys:String x:Key="QualityDetailsLabel">Show detailed quality metrics</sys:String>
   <sys:String x:Key="QualityVersionInfo">Core: {0} · Profile: {1} · CQS: {2}</sys:String>
   <sys:String x:Key="QualityHidden">Quality display is disabled in settings.</sys:String>
+  <sys:String x:Key="QualityDimensionText">Text</sys:String>
+  <sys:String x:Key="QualityDimensionHeadings">Headings</sys:String>
+  <sys:String x:Key="QualityDimensionLists">Lists</sys:String>
+  <sys:String x:Key="QualityDimensionTables">Tables</sys:String>
+  <sys:String x:Key="QualityDimensionLinks">Links</sys:String>
+  <sys:String x:Key="QualityDimensionImages">Images</sys:String>
+  <sys:String x:Key="QualityDimensionOrder">Order</sys:String>
+  <sys:String x:Key="QualityDimensionCoverage">Coverage</sys:String>
 </ResourceDictionary>

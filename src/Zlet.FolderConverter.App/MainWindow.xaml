@@ -294,7 +294,7 @@
                                                 <DataTemplate>
                                                     <Grid VerticalAlignment="Center" Margin="2,0,4,0">
                                                         <ComboBox ItemsSource="{Binding Targets}"
-                                                                  SelectedItem="{Binding SelectedTarget, Mode=TwoWay}"
+                                                                  SelectedItem="{Binding SelectedTarget, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                                   IsEnabled="{Binding DataContext.CanChangeRules, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                   HorizontalAlignment="Stretch"
                                                                   Cursor="Arrow"

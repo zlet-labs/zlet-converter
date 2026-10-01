@@ -124,7 +124,7 @@ public sealed class OperationRowViewModel : INotifyPropertyChanged
             if (q.FidelityScore is null) return _localization.Get("QualityNotEvaluated");
             var summary = _localization.Format("QualitySummaryFormat", q.FidelityScore.Value, q.EvaluationCoverage ?? 0d, Result?.Quality?.Findings.Count ?? 0);
             if (!policy.ShowDetailedMetrics || Result?.Quality?.Projection is null) return summary;
-            var dimensions = string.Join(" · ", Result.Quality.Projection.Dimensions.Where(d => d.Score is not null).Select(d => $"{d.Name} {d.Score:0.#}%"));
+            var dimensions = string.Join(" · ", Result.Quality.Projection.Dimensions.Where(d => d.Score is not null).Select(d => $"{LocalizeQualityDimension(d.Name)} {d.Score:0.#}%"));
             return string.IsNullOrWhiteSpace(dimensions) ? summary : summary + Environment.NewLine + dimensions;
         }
     }
@@ -313,6 +313,19 @@ public sealed class OperationRowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(QualityStatus));
         OnPropertyChanged(nameof(QualitySummary));
     }
+
+    private string LocalizeQualityDimension(string name) => name switch
+    {
+        "text" => _localization.Get("QualityDimensionText"),
+        "headings" => _localization.Get("QualityDimensionHeadings"),
+        "lists" => _localization.Get("QualityDimensionLists"),
+        "tables" => _localization.Get("QualityDimensionTables"),
+        "links" => _localization.Get("QualityDimensionLinks"),
+        "images" => _localization.Get("QualityDimensionImages"),
+        "order" => _localization.Get("QualityDimensionOrder"),
+        "coverage" => _localization.Get("QualityDimensionCoverage"),
+        _ => name
+    };
 
     public void RefreshLocalization() => OnLanguageChanged(this, EventArgs.Empty);
 

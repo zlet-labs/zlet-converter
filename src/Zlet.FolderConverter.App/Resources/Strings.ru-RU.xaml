@@ -148,9 +148,9 @@
   <sys:String x:Key="QualityReview">Проверить</sys:String>
   <sys:String x:Key="QualityFail">Ошибка</sys:String>
   <sys:String x:Key="QualityPartial">Частично</sys:String>
-  <sys:String x:Key="QualityCoverageOnly">Только покрытие; fidelity не оценён.</sys:String>
+  <sys:String x:Key="QualityCoverageOnly">Только покрытие; точность преобразования не оценивается.</sys:String>
   <sys:String x:Key="QualityNotEvaluated">Качество не оценено.</sys:String>
-  <sys:String x:Key="QualitySummaryFormat">Fidelity {0:0.#}% · оценено {1:0.#}% · находок {2}</sys:String>
+  <sys:String x:Key="QualitySummaryFormat">Точность преобразования {0:0.#}% · покрытие оценки {1:0.#}% · замечаний {2}</sys:String>
   <sys:String x:Key="SettingsQuality">Проверка качества</sys:String>
   <sys:String x:Key="QualityEnabledLabel">Включить проверку качества</sys:String>
   <sys:String x:Key="QualityShowAfterLabel">Показывать качество после конвертации</sys:String>
@@ -160,4 +160,12 @@
   <sys:String x:Key="QualityDetailsLabel">Показывать подробные метрики качества</sys:String>
   <sys:String x:Key="QualityVersionInfo">Core: {0} · Профиль: {1} · CQS: {2}</sys:String>
   <sys:String x:Key="QualityHidden">Показ качества отключён в настройках.</sys:String>
+  <sys:String x:Key="QualityDimensionText">Текст</sys:String>
+  <sys:String x:Key="QualityDimensionHeadings">Заголовки</sys:String>
+  <sys:String x:Key="QualityDimensionLists">Списки</sys:String>
+  <sys:String x:Key="QualityDimensionTables">Таблицы</sys:String>
+  <sys:String x:Key="QualityDimensionLinks">Ссылки</sys:String>
+  <sys:String x:Key="QualityDimensionImages">Изображения</sys:String>
+  <sys:String x:Key="QualityDimensionOrder">Порядок</sys:String>
+  <sys:String x:Key="QualityDimensionCoverage">Покрытие</sys:String>
 </ResourceDictionary>
